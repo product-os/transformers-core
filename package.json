@@ -1,6 +1,6 @@
 {
   "name": "@balena/transformers-lib",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Logic for evaluating and executing transformers",
   "homepage": "https://github.com/product-os/transformer-core#readme",
   "main": "build/index.js",
@@ -36,6 +36,6 @@
     "skhema": "^6.0.6"
   },
   "versionist": {
-    "publishedAt": "2022-06-13T14:55:16.332Z"
+    "publishedAt": "2022-06-13T17:13:34.943Z"
   }
 }
