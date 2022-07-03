@@ -1,5 +1,5 @@
-import { matchTransformersWithContract } from '../lib';
-import { TransformerContract } from '../lib/types';
+import { matchTransformersWithContract, TransformerContract } from '../lib';
+import { contractFactory } from './helpers/contract-factory';
 
 describe('Transformers', function () {
 	describe('matchTransformersWithContract()', function () {
@@ -113,24 +113,3 @@ describe('Transformers', function () {
 		});
 	});
 });
-
-function contractFactory(
-	slug: string,
-	version: string,
-	type: string,
-	data: { [key: string]: any },
-) {
-	return {
-		id: '0',
-		slug,
-		version,
-		type,
-		data,
-		tags: [],
-		markers: [],
-		created_at: '',
-		active: true,
-		requires: [],
-		capabilities: [],
-	};
-}
