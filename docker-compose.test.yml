@@ -1,0 +1,47 @@
+version: '2.1'
+
+networks:
+  internal: {}
+
+volumes:
+  docker-certs-client: {}
+  docker-certs-ca: {}
+
+services:
+
+  sut:
+    image: sut:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - registry
+      - docker
+    environment:
+      REGISTRY_URI: registry:5000
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_CERTDIR: /certs
+    networks:
+      - internal
+    volumes:
+      - docker-certs-client:/certs/client:ro
+
+  registry:
+    image: registry:2
+    restart: always
+    networks:
+      - internal
+
+  docker:
+    image: docker:dind
+    privileged: true
+    networks:
+      - internal
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - docker-certs-ca:/certs/ca
+      - docker-certs-client:/certs/client
+    command: [
+        "--insecure-registry", "registry:5000"
+    ]
