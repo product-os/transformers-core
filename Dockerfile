@@ -9,4 +9,4 @@ WORKDIR /usr/src/app
 COPY package.json .npmrc ./
 RUN npm install
 COPY . ./
-CMD /bin/bash -c "npm run test"
+CMD /bin/bash -c "npm run test:integration"

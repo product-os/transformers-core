@@ -6,6 +6,11 @@ import type { JSONSchema6 } from 'json-schema';
 
 export { ContractData };
 
+export interface ActorCredentials {
+	slug: string;
+	sessionToken: string;
+}
+
 // TODO: rename to manifest and remove nested input prop
 export interface InputManifest<InputContract extends Contract = Contract> {
 	input: {
@@ -88,7 +93,7 @@ export interface TaskDefinitionData {
 	};
 }
 
-interface TaskData extends ContractData {
+export interface TaskData extends ContractData {
 	actor: string;
 	input: ArtifactContract;
 	transformer: TransformerContract;
@@ -99,7 +104,7 @@ export interface TaskContract extends Contract<TaskData> {}
 export interface TaskContractDefinition
 	extends ContractDefinition<TaskDefinitionData> {}
 
-interface ArtifactData extends ContractData {
+export interface ArtifactData extends ContractData {
 	$transformer?: {
 		artifactReady: boolean;
 		baseSlug?: string;
