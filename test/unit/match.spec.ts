@@ -1,8 +1,8 @@
-import { matchTransformersWithContract, TransformerContract } from '../lib';
+import { matchTransformers, TransformerContract } from '../../lib';
 import { contractFactory } from './helpers/contract-factory';
 
 describe('Transformers', function () {
-	describe('matchTransformersWithContract()', function () {
+	describe('matchTransformers()', function () {
 		const filterEqualsInput = {
 			type: 'object',
 			required: ['type'],
@@ -48,11 +48,7 @@ describe('Transformers', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
 			expect(
-				matchTransformersWithContract(
-					transformers,
-					previousContract,
-					currentContract,
-				),
+				matchTransformers(transformers, previousContract, currentContract),
 			).toEqual(matched);
 		});
 
@@ -62,11 +58,7 @@ describe('Transformers', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
 			expect(
-				matchTransformersWithContract(
-					transformers,
-					previousContract,
-					currentContract,
-				),
+				matchTransformers(transformers, previousContract, currentContract),
 			).toEqual(matched);
 		});
 
@@ -76,11 +68,7 @@ describe('Transformers', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched: TransformerContract[] = [];
 			expect(
-				matchTransformersWithContract(
-					transformers,
-					previousContract,
-					currentContract,
-				),
+				matchTransformers(transformers, previousContract, currentContract),
 			).toEqual(matched);
 		});
 
@@ -90,11 +78,7 @@ describe('Transformers', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched: TransformerContract[] = [];
 			expect(
-				matchTransformersWithContract(
-					transformers,
-					previousContract,
-					currentContract,
-				),
+				matchTransformers(transformers, previousContract, currentContract),
 			).toEqual(matched);
 		});
 
@@ -104,11 +88,7 @@ describe('Transformers', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
 			expect(
-				matchTransformersWithContract(
-					transformers,
-					previousContract,
-					currentContract,
-				),
+				matchTransformers(transformers, previousContract, currentContract),
 			).toEqual(matched);
 		});
 	});

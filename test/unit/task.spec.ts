@@ -1,4 +1,4 @@
-import { TransformerData, createTaskContract } from '../lib';
+import { TransformerData, createTaskDefinition } from '../../lib';
 import { contractFactory } from './helpers/contract-factory';
 
 describe('Tasks', function () {
@@ -17,10 +17,10 @@ describe('Tasks', function () {
 		);
 		const actorId = 'foobar';
 		it('should create task contract', function () {
-			const taskContract = createTaskContract(
+			const taskContract = createTaskDefinition(
+				actorId,
 				inputContract,
 				transformer,
-				actorId,
 			);
 			expect(taskContract.data.input).toEqual(inputContract);
 			expect(taskContract.data.transformer).toEqual(transformer);

@@ -6,6 +6,7 @@ import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
 import spawn from './util/spawn-promise';
 import { ActorCredentials, Contract, TaskContract } from './types';
+import { hasArtifact } from './contract';
 
 export const mimeType = {
 	dockerManifest: 'application/vnd.docker.distribution.manifest.v2+json',
@@ -28,16 +29,16 @@ export interface RegistryAuthOptions {
 	password: string;
 }
 
-export function createArtifactURI(registryUri: string, contract: Contract) {
+export function createArtifactUri(registryUri: string, contract: Contract) {
 	return `${registryUri}/${contract.slug}:${contract.version}`;
 }
 
-export async function pullTransformer(
+export async function pullTransformerImage(
 	registry: Registry,
 	credentials: ActorCredentials,
 	task: TaskContract,
 ) {
-	const imageURI = createArtifactURI(
+	const imageURI = createArtifactUri(
 		registry.registryUri,
 		task.data.transformer,
 	);
@@ -47,7 +48,27 @@ export async function pullTransformer(
 	});
 }
 
-export default class Registry {
+export async function pullInputArtifact(
+	registry: Registry,
+	credentials: ActorCredentials,
+	destDir: string,
+	task: TaskContract,
+) {
+	if (hasArtifact(task.data.input)) {
+		const artifactUri = createArtifactUri(
+			registry.registryUri,
+			task.data.transformer,
+		);
+		return await registry.pullArtifact(artifactUri, destDir, {
+			username: credentials.slug,
+			password: credentials.sessionToken,
+		});
+	} else {
+		return null;
+	}
+}
+
+export class Registry {
 	public readonly registryUri: string;
 	public readonly docker: Docker;
 	private readonly logger: any;

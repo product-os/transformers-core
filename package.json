@@ -15,9 +15,10 @@
     "build": "npm run clean && tsc",
     "lint": "balena-lint --typescript lib test",
     "lint-fix": "balena-lint --typescript --fix lib test",
-    "test": "",
     "test:fast": "npm run build && npm run test",
     "prepack": "npm run build",
+    "test": "npm run lint && npm run test:unit",
+    "test:unit": "jest test/unit",
     "test:integration": "docker build -t sut:latest . && docker-compose -f docker-compose.test.yml up --exit-code-from=sut"
   },
   "devDependencies": {
