@@ -13,5 +13,7 @@ docker:
   builds:
     - path: .
       dockerfile: Dockerfile
-      docker_repo: transformers-core
+      docker_repo: sut
       publish: false
+      args:
+        - BUILDKIT_INLINE_CACHE=1

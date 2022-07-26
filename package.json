@@ -15,16 +15,20 @@
     "build": "npm run clean && tsc",
     "lint": "balena-lint --typescript lib test",
     "lint-fix": "balena-lint --typescript --fix lib test",
-    "test": "jest",
+    "test": "",
     "test:fast": "npm run build && npm run test",
     "prepack": "npm run build",
     "test:integration": "docker build -t sut:latest . && docker-compose -f docker-compose.test.yml up --exit-code-from=sut"
   },
   "devDependencies": {
-    "@balena/transformer-runtime": "^1.5.1",
     "@balena/lint": "^5.4.2",
+    "@balena/transformer-runtime": "^1.5.1",
+    "@types/bunyan": "^1.8.8",
+    "@types/dockerode": "^3.3.3",
     "@types/inflection": "^1.13.0",
     "@types/jest": "^27.4.1",
+    "@types/node": "^16.11.7",
+    "@types/node-fetch": "^2.6.2",
     "husky": "^4.2.5",
     "jest": "^27.5.1",
     "lint-staged": "^11.0.0",
@@ -36,7 +40,9 @@
   "dependencies": {
     "@balena/jellyfish-types": "^2.0.5",
     "@types/json-schema": "^6.0.1",
-    "inflection": "^1.13.2",
+    "debugnyan": "^3.0.0",
+    "dockerode": "^3.3.1",
+    "node-fetch": "^2.6.7",
     "skhema": "^6.0.6"
   },
   "versionist": {
