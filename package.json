@@ -1,6 +1,6 @@
 {
   "name": "@balena/transformers-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Core logic and types for working with transformers",
   "homepage": "https://github.com/product-os/transformer-core#readme",
   "main": "build/index.js",
@@ -40,6 +40,6 @@
     "skhema": "^6.0.6"
   },
   "versionist": {
-    "publishedAt": "2022-07-22T14:39:58.447Z"
+    "publishedAt": "2022-07-26T09:25:54.311Z"
   }
 }
