@@ -1,8 +1,8 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import Registry from '../lib/registry';
-import { logger } from '../lib/logger';
+import { Registry } from '../../lib';
+import { logger } from '../../lib';
 
 describe('Registry', function () {
 	const registryUri = process.env.REGISTRY_URI

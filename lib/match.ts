@@ -3,7 +3,7 @@ import { Contract, TransformerContract } from './types';
 
 type TransformerSet = TransformerContract[];
 
-export function matchTransformersWithContract(
+export function matchTransformers(
 	transformers: TransformerSet,
 	previousContract: Contract<any> | null,
 	currentContract: Contract<any>,

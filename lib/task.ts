@@ -1,5 +1,4 @@
 import {
-	ArtifactContract,
 	Contract,
 	TaskContract,
 	TaskContractDefinition,
@@ -7,20 +6,12 @@ import {
 } from './types';
 import { slugify } from './slugify';
 import type TransformerRuntime from '@balena/transformer-runtime';
+import { Workspace } from './workspace';
 
-export interface TaskWorkspace {
-	artifactDir: string;
-	inputDir: string;
-	outputDir: string;
-	secondaryInput:
-		| Array<{ contract: ArtifactContract; artifactDirectory: string }>
-		| undefined;
-}
-
-export function createTaskContract(
+export function createTaskDefinition(
+	actorId: string,
 	inputContract: Contract<any>,
 	transformer: TransformerContract,
-	actorId: string,
 ): TaskContractDefinition {
 	const name = `Transform "${inputContract.name}" using transformer "${transformer.name}"`;
 	return {
@@ -39,9 +30,9 @@ export function createTaskContract(
 	};
 }
 
-export async function runTask(
+export async function runTransformer(
 	task: TaskContract,
-	workspace: TaskWorkspace,
+	workspace: Workspace,
 	runtime: TransformerRuntime,
 	imageRef: string,
 	labels: { [label: string]: string },
@@ -49,7 +40,7 @@ export async function runTask(
 	logMeta: any,
 ) {
 	return await runtime.runTransformer(
-		workspace.artifactDir,
+		workspace.inputArtifactDir,
 		task.data.input,
 		task.data.transformer,
 		imageRef,
@@ -57,7 +48,7 @@ export async function runTask(
 		workspace.outputDir,
 		privileged,
 		labels,
-		workspace.secondaryInput,
+		[],
 		logMeta,
 	);
 }

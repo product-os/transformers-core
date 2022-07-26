@@ -1,4 +1,4 @@
-import type { Contract } from '../../lib';
+import type { Contract } from '../../../lib';
 
 export function contractFactory<Data = any>(
 	slug: string,
