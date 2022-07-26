@@ -8,3 +8,10 @@ npm:
       architecture: x86_64
       node_versions:
         - "16"
+
+docker:
+  builds:
+    - path: .
+      dockerfile: Dockerfile
+      docker_repo: transformers-core
+      publish: false
