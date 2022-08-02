@@ -1,42 +1,40 @@
-import {
-	Contract as RawContract,
-	ContractData,
-} from '@balena/jellyfish-types/build/core';
 import type { JSONSchema6 } from 'json-schema';
+import { ContractData, Contract, ContractDefinition } from './contract';
 
-export { ContractData };
+export interface ArtifactContract extends Contract<ArtifactData> {}
+export interface TransformerContract extends Contract<TransformerData> {}
+
+export interface BackflowMapping {
+	downstreamValue?: Formula | any;
+	upstreamPath: Formula | string;
+}
+
+export interface Formula {
+	$$formula: string;
+}
+
+export type OutputManifest = {
+	results: [
+		{
+			contract: ContractDefinition<ArtifactData>;
+			artifactPath?: string;
+			imagePath?: string;
+			manifestList?: string[];
+		},
+	];
+};
+
+export interface ErrorData extends ArtifactData {
+	message: string;
+	code: string;
+}
+
+export interface ErrorContractDefinition
+	extends ContractDefinition<ErrorData> {}
 
 export interface ActorCredentials {
 	slug: string;
 	sessionToken: string;
-}
-
-// TODO: rename to manifest and remove nested input prop
-export interface InputManifest<InputContract extends Contract = Contract> {
-	input: {
-		contract: InputContract;
-		transformerContract: TransformerContract;
-		artifactPath: string; // relative to the input file
-		decryptedSecrets?: {
-			[key: string]: string;
-		};
-		decryptedTransformerSecrets?: {
-			[key: string]: string;
-		};
-	};
-}
-
-// TODO: remove when handle is upstream
-export interface ContractDefinition<TData = ContractData> {
-	handle: string;
-	type: string;
-	data: TData;
-	name?: string;
-}
-
-// TODO: remove when handle is upstream
-export interface Contract<TData = ContractData> extends RawContract<TData> {
-	handle?: string;
 }
 
 // TODO: rename to Output
@@ -79,31 +77,6 @@ export interface TransformerContractDefinition
 
 export interface TransformerContract extends Contract<TransformerData> {}
 
-export interface TaskDefinitionData {
-	actor: string;
-	input: {
-		id: string;
-	};
-	status: string;
-	transformer: {
-		id: string;
-	};
-	workerFilter: {
-		schema: JSONSchema6 | undefined;
-	};
-}
-
-export interface TaskData extends ContractData {
-	actor: string;
-	input: ArtifactContract;
-	transformer: TransformerContract;
-}
-
-export interface TaskContract extends Contract<TaskData> {}
-
-export interface TaskContractDefinition
-	extends ContractDefinition<TaskDefinitionData> {}
-
 export interface ArtifactData extends ContractData {
 	$transformer?: {
 		artifactReady: boolean;
@@ -120,4 +93,5 @@ export interface ArtifactData extends ContractData {
 		};
 	};
 }
+
 export interface ArtifactContract extends Contract<ArtifactData> {}

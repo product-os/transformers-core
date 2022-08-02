@@ -4,9 +4,10 @@ import * as stream from 'stream';
 import { promisify } from 'util';
 import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
-import spawn from './util/spawn-promise';
-import { ActorCredentials, Contract, TaskContract } from './types';
-import { hasArtifact } from './contract';
+import { ActorCredentials } from './types';
+import { TaskContract } from './task';
+import { Contract } from './contract';
+import { spawn, streamToString } from './util';
 
 export const mimeType = {
 	dockerManifest: 'application/vnd.docker.distribution.manifest.v2+json',
@@ -14,15 +15,6 @@ export const mimeType = {
 };
 
 const pump = promisify(stream.pipeline); // Node 16 gives native pipeline promise... This is needed to properly handle stream errors
-
-export function streamToPromise(s: NodeJS.ReadableStream): Promise<string> {
-	return new Promise((resolve, reject) => {
-		let buf = '';
-		s.on('data', (d) => (buf += d.toString()));
-		s.on('end', () => resolve(buf));
-		s.on('error', reject);
-	});
-}
 
 export interface RegistryAuthOptions {
 	username: string;
@@ -46,26 +38,6 @@ export async function pullTransformerImage(
 		username: credentials.slug,
 		password: credentials.sessionToken,
 	});
-}
-
-export async function pullInputArtifact(
-	registry: Registry,
-	credentials: ActorCredentials,
-	destDir: string,
-	task: TaskContract,
-) {
-	if (hasArtifact(task.data.input)) {
-		const artifactUri = createArtifactUri(
-			registry.registryUri,
-			task.data.transformer,
-		);
-		return await registry.pullArtifact(artifactUri, destDir, {
-			username: credentials.slug,
-			password: credentials.sessionToken,
-		});
-	} else {
-		return null;
-	}
 }
 
 export class Registry {
@@ -249,10 +221,15 @@ export class Registry {
 	) {
 		this.logger.info({ dockerArgs }, 'running docker-CLI command');
 		const run = async (args: string[], opts: any = {}) => {
-			const streams = await spawn('docker', args, opts);
-			const stdout = streams.stdout.toString();
-			const stderr = streams.stderr.toString();
-			return { stdout, stderr };
+			const result = await spawn('docker', args, opts);
+			if (result.ok) {
+				return {
+					stdout: result.stdout.toString(),
+					stderr: result.stderr.toString(),
+				};
+			} else {
+				throw result.err;
+			}
 		};
 		if (!this.dockerLogins.has(authOpts.username)) {
 			const loginCmd = [
@@ -288,10 +265,14 @@ export class Registry {
 				authOpts.password,
 			);
 		}
-		const streams = await spawn('oras', args, spawnOptions);
-		const output = streams.stdout.toString();
-		this.logger.info({ output }, 'oras finished');
-		return output;
+		const result = await spawn('oras', args, spawnOptions);
+		if (result.ok) {
+			const output = result.stdout.toString();
+			this.logger.info({ output }, 'oras finished');
+			return output;
+		} else {
+			throw result.err;
+		}
 	}
 
 	private logErrorAndThrow = (e: any) => {
@@ -307,20 +288,18 @@ export class Registry {
 	};
 
 	private async loadImage(imageFilePath: string) {
-		const loadImageStream = await this.docker.loadImage(
+		const resultStream = await this.docker.loadImage(
 			fs.createReadStream(imageFilePath),
 		);
-		const loadResult = await streamToPromise(loadImageStream);
+		const result = await streamToString(resultStream);
 
 		// docker.load example output:
 		// Loaded image: myApp/myImage
 		// Loaded image ID: sha256:1247839245789327489102473
 		const successfulLoadRegex = /Loaded image.*?: (\S+)\\n/i;
-		const loadResultMatch = successfulLoadRegex.exec(loadResult);
+		const loadResultMatch = successfulLoadRegex.exec(result);
 		if (!loadResultMatch) {
-			throw new Error(
-				`failed to load image : ${imageFilePath} .  ${loadResult}`,
-			);
+			throw new Error(`failed to load image : ${imageFilePath} .  ${result}`);
 		}
 		return this.docker.getImage(loadResultMatch[1]);
 	}

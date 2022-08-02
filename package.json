@@ -19,17 +19,21 @@
     "prepack": "npm run build",
     "test": "npm run lint && npm run test:unit",
     "test:unit": "jest test/unit",
-    "test:integration": "docker build -t sut:latest . && docker-compose -f docker-compose.test.yml up --exit-code-from=sut"
+    "test:integration": "jest test/integration",
+    "test:compose": "docker build -t sut:latest . && docker-compose -f docker-compose.test.yml up --exit-code-from=sut"
   },
   "devDependencies": {
     "@balena/lint": "^5.4.2",
-    "@balena/transformer-runtime": "^1.5.1",
     "@types/bunyan": "^1.8.8",
     "@types/dockerode": "^3.3.3",
+    "@types/fs-extra": "^9.0.13",
     "@types/inflection": "^1.13.0",
     "@types/jest": "^27.4.1",
+    "@types/js-yaml": "^4.0.2",
+    "@types/json-schema": "^6.0.1",
     "@types/node": "^16.11.7",
     "@types/node-fetch": "^2.6.2",
+    "@types/node-rsa": "^1.1.1",
     "husky": "^4.2.5",
     "jest": "^27.5.1",
     "lint-staged": "^11.0.0",
@@ -39,11 +43,13 @@
     "typescript": "^4.2.4"
   },
   "dependencies": {
-    "@balena/jellyfish-types": "^2.0.5",
-    "@types/json-schema": "^6.0.1",
+    "autumndb": "^21.2.0",
     "debugnyan": "^3.0.0",
     "dockerode": "^3.3.1",
+    "fs-extra": "^10.1.0",
+    "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
+    "node-rsa": "^1.1.1",
     "skhema": "^6.0.6"
   },
   "versionist": {

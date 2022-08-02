@@ -1,44 +1,61 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { TaskContract } from './types';
-import { F_OK } from 'constants';
+import * as fs from 'fs';
+import { randomUUID } from 'crypto';
+import { emptyDir } from './util';
+import { createArtifactUri, Registry } from './registry';
+import { ActorCredentials } from './types';
+import { hasArtifact } from './contract';
+import { InputManifest } from './manifest';
 
 export interface Workspace {
 	inputDir: string;
-	inputArtifactDir: string;
+	inputManifestPath: string;
+	inputArtifactPath: string;
 	outputDir: string;
 }
 
-export async function prepareWorkspace(task: TaskContract): Promise<Workspace> {
-	const basePath = path.join(os.tmpdir(), path.sep);
-	const inputDir = await emptyDir(
-		path.join(basePath, 'input', `task-${task.id}`),
+export interface WorkspaceOptions {
+	basePath?: string;
+	cachedArtifactPath?: string;
+}
+
+export async function prepareWorkspace(
+	credentials: ActorCredentials,
+	registry: Registry,
+	manifest: InputManifest,
+	opts: WorkspaceOptions,
+): Promise<Workspace> {
+	const basePath = opts.basePath || os.tmpdir();
+	const uuid = randomUUID();
+	const inputDir = await emptyDir(path.join(basePath, uuid, 'input'));
+	const inputManifestPath = path.join(inputDir, 'manifest.json');
+	await fs.promises.writeFile(
+		inputManifestPath,
+		JSON.stringify(manifest, null, 4),
+		'utf8',
 	);
-	const inputArtifactDir = await emptyDir(path.join(inputDir, 'artifact'));
-	const outputDir = await emptyDir(
-		path.join(basePath, 'output', `task-${task.id}`),
-	);
+	let inputArtifactPath;
+	if (opts.cachedArtifactPath) {
+		inputArtifactPath = opts.cachedArtifactPath;
+	} else {
+		inputArtifactPath = await emptyDir(path.join(inputDir, 'artifact'));
+		if (hasArtifact(manifest.contract)) {
+			const artifactUri = createArtifactUri(
+				registry.registryUri,
+				manifest.transformer,
+			);
+			await registry.pullArtifact(artifactUri, inputArtifactPath, {
+				username: credentials.slug,
+				password: credentials.sessionToken,
+			});
+		}
+	}
+	const outputDir = await emptyDir(path.join(basePath, uuid, 'output'));
 	return {
 		inputDir,
-		inputArtifactDir,
+		inputManifestPath,
+		inputArtifactPath,
 		outputDir,
 	};
-}
-
-export async function pathExists(p: string) {
-	try {
-		await fs.promises.access(p, F_OK);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-export async function emptyDir(p: string) {
-	if (await pathExists(p)) {
-		await fs.promises.rm(p, { recursive: true, force: true });
-	}
-	await fs.promises.mkdir(p, { recursive: true });
-	return p;
 }
