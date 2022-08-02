@@ -1,5 +1,6 @@
 import * as skhema from 'skhema';
-import { Contract, TransformerContract } from './types';
+import { TransformerContract } from './types';
+import { Contract } from './contract';
 
 type TransformerSet = TransformerContract[];
 

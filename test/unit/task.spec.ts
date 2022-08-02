@@ -1,20 +1,21 @@
-import { TransformerData, createTaskDefinition } from '../../lib';
-import { contractFactory } from './helpers/contract-factory';
+import { createTaskDefinition } from '../../lib';
+import { contractFactory } from '../helpers/contract-factory';
 
 describe('Tasks', function () {
 	describe('create task', function () {
-		const transformer = contractFactory<TransformerData>(
-			'some-transformer',
-			'1.0.0',
-			'transformer@1.0.0',
-			{ inputFilter: {}, backflowMapping: [] },
-		);
-		const inputContract = contractFactory(
-			'some-source',
-			'1.0.0',
-			'source@1.0.0',
-			{},
-		);
+		const loop = 'test';
+		const transformer = contractFactory(loop, {
+			handle: 'some-transformer',
+			version: '1.0.0',
+			type: 'transformer@1.0.0',
+			data: { inputFilter: {}, backflowMapping: [] },
+		});
+		const inputContract = contractFactory(loop, {
+			handle: 'some-source',
+			version: '1.0.0',
+			type: 'source@1.0.0',
+			data: {},
+		});
 		const actorId = 'foobar';
 		it('should create task contract', function () {
 			const taskContract = createTaskDefinition(

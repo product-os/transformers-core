@@ -9,9 +9,9 @@ describe('Registry', function () {
 		? process.env.REGISTRY_URI
 		: 'localhost:5000';
 	const imageRef = `${registryUri}/image:latest`;
-	const imagePath = path.join(__dirname, './fixtures/image.tar');
+	const imagePath = path.join(__dirname, '../fixtures/image.tar');
 	const artifactRef = `${registryUri}/artifact:latest`;
-	const artifactPath = path.join(__dirname, './fixtures/artifact');
+	const artifactPath = path.join(__dirname, '../fixtures/artifact');
 	const authOpts = { username: 'test', password: 'pass' };
 
 	it('should push image', async function () {

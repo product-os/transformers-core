@@ -1,8 +1,9 @@
 import { matchTransformers, TransformerContract } from '../../lib';
-import { contractFactory } from './helpers/contract-factory';
+import { contractFactory } from '../helpers/contract-factory';
 
 describe('Transformers', function () {
 	describe('matchTransformers()', function () {
+		const loop = 'test';
 		const filterEqualsInput = {
 			type: 'object',
 			required: ['type'],
@@ -17,30 +18,30 @@ describe('Transformers', function () {
 				type: { const: 'else@1.0.0' },
 			},
 		};
-		const matchTransformer = contractFactory(
-			'match-me',
-			'1.0.0',
-			'transformer@1.0.0',
-			{ inputFilter: filterEqualsInput },
-		);
-		const notMatchTransformer = contractFactory(
-			'match-me-not',
-			'1.0.0',
-			'transformer@1.0.0',
-			{ inputFilter: filterNotEqualsInput },
-		);
-		const contractArtifactNotReady = contractFactory(
-			'no-artifact-ready',
-			'1.0.0',
-			'source@1.0.0',
-			{ $transformer: { artifactReady: false } },
-		);
-		const contractArtifactReady = contractFactory(
-			'artifact-ready',
-			'1.0.0',
-			'source@1.0.0',
-			{ $transformer: { artifactReady: true } },
-		);
+		const matchTransformer = contractFactory(loop, {
+			handle: 'match-me',
+			version: '1.0.0',
+			type: 'transformer@1.0.0',
+			data: { inputFilter: filterEqualsInput },
+		});
+		const notMatchTransformer = contractFactory(loop, {
+			handle: 'match-me-not',
+			version: '1.0.0',
+			type: 'transformer@1.0.0',
+			data: { inputFilter: filterNotEqualsInput },
+		});
+		const contractArtifactNotReady = contractFactory(loop, {
+			handle: 'no-artifact-ready',
+			version: '1.0.0',
+			type: 'source@1.0.0',
+			data: { $transformer: { artifactReady: false } },
+		});
+		const contractArtifactReady = contractFactory(loop, {
+			handle: 'artifact-ready',
+			version: '1.0.0',
+			type: 'source@1.0.0',
+			data: { $transformer: { artifactReady: true } },
+		});
 
 		it('should MATCH transformer if NEW contract and artifact NOT READY', function () {
 			const previousContract = null;
