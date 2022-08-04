@@ -1,96 +1,60 @@
-import { matchTransformers, TransformerContract } from '../../lib';
-import { contractFactory } from '../helpers/contract-factory';
+import {
+	contractFactory,
+	matchTransformers,
+	TransformerContract,
+} from '../../lib';
 
 describe('Transformers', function () {
 	describe('matchTransformers()', function () {
-		const loop = 'test';
+		// TODO: semver match version
+
 		const filterEqualsInput = {
 			type: 'object',
 			required: ['type'],
 			properties: {
-				type: { const: 'source@1.0.0' },
+				type: { const: 'source' },
 			},
 		};
 		const filterNotEqualsInput = {
 			type: 'object',
 			required: ['type'],
 			properties: {
-				type: { const: 'else@1.0.0' },
+				type: { const: 'else' },
 			},
 		};
-		const matchTransformer = contractFactory(loop, {
-			handle: 'match-me',
+		const matchTransformer: TransformerContract = contractFactory({
+			type: 'transformer',
+			repo: 'match-me',
+			loop: 'test',
 			version: '1.0.0',
-			type: 'transformer@1.0.0',
-			data: { inputFilter: filterEqualsInput },
+			typeVersion: '1.0.0',
+			data: { filter: filterEqualsInput },
+			requires: [],
+			capabilities: [],
 		});
-		const notMatchTransformer = contractFactory(loop, {
-			handle: 'match-me-not',
+		const notMatchTransformer: TransformerContract = contractFactory({
+			type: 'transformer',
+			repo: 'match-me-not',
+			loop: 'test',
 			version: '1.0.0',
-			type: 'transformer@1.0.0',
-			data: { inputFilter: filterNotEqualsInput },
+			typeVersion: '1.0.0',
+			data: { filter: filterNotEqualsInput },
+			requires: [],
+			capabilities: [],
 		});
-		const contractArtifactNotReady = contractFactory(loop, {
-			handle: 'no-artifact-ready',
+		const input = contractFactory({
+			type: 'source',
+			repo: 'test',
+			loop: 'test',
 			version: '1.0.0',
-			type: 'source@1.0.0',
-			data: { $transformer: { artifactReady: false } },
-		});
-		const contractArtifactReady = contractFactory(loop, {
-			handle: 'artifact-ready',
-			version: '1.0.0',
-			type: 'source@1.0.0',
-			data: { $transformer: { artifactReady: true } },
+			typeVersion: '1.0.0',
+			data: {},
 		});
 
-		it('should MATCH transformer if NEW contract and artifact NOT READY', function () {
-			const previousContract = null;
-			const currentContract = contractArtifactNotReady;
+		it('should match only one transformer', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
-			expect(
-				matchTransformers(transformers, previousContract, currentContract),
-			).toEqual(matched);
-		});
-
-		it('should MATCH transformer if NEW contract and artifact READY', function () {
-			const previousContract = null;
-			const currentContract = contractArtifactReady;
-			const transformers = [matchTransformer, notMatchTransformer];
-			const matched = [matchTransformer];
-			expect(
-				matchTransformers(transformers, previousContract, currentContract),
-			).toEqual(matched);
-		});
-
-		it('should NOT MATCH transformer if NOT NEW contract and artifact NOT READY', function () {
-			const previousContract = contractArtifactNotReady;
-			const currentContract = contractArtifactNotReady;
-			const transformers = [matchTransformer, notMatchTransformer];
-			const matched: TransformerContract[] = [];
-			expect(
-				matchTransformers(transformers, previousContract, currentContract),
-			).toEqual(matched);
-		});
-
-		it('should NOT MATCH transformer if NOT NEW contract and artifact READY', function () {
-			const previousContract = contractArtifactReady;
-			const currentContract = contractArtifactReady;
-			const transformers = [matchTransformer, notMatchTransformer];
-			const matched: TransformerContract[] = [];
-			expect(
-				matchTransformers(transformers, previousContract, currentContract),
-			).toEqual(matched);
-		});
-
-		it('should MATCH transformer if NOT NEW contract and artifact CHANGED TO READY', function () {
-			const previousContract = contractArtifactNotReady;
-			const currentContract = contractArtifactReady;
-			const transformers = [matchTransformer, notMatchTransformer];
-			const matched = [matchTransformer];
-			expect(
-				matchTransformers(transformers, previousContract, currentContract),
-			).toEqual(matched);
+			expect(matchTransformers(transformers, null, input)).toEqual(matched);
 		});
 	});
 });

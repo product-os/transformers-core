@@ -5,12 +5,11 @@ import {
 	logger,
 	ContainerRuntime,
 	prepareWorkspace,
-	createTaskDefinition,
+	createTask,
 	Registry,
 	ActorCredentials,
 } from '../../lib/';
 import type { Contract, TransformerContract } from '../../lib/';
-import { contractFactory } from '../helpers/contract-factory';
 import { spawn } from '../../lib/util';
 import { createInputManifest } from '../../lib/manifest';
 
@@ -53,13 +52,7 @@ describe('ContainerRuntime', function () {
 			throw buildResult.err;
 		}
 
-		const taskDef = createTaskDefinition(
-			'test',
-			inputContract,
-			transformerContract,
-		);
-		const loop = 'test';
-		const task = contractFactory(loop, taskDef);
+		const task = createTask('test', inputContract, transformerContract);
 
 		const credentials: ActorCredentials = {
 			slug: 'test',

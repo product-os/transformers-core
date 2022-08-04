@@ -43,10 +43,8 @@
     "typescript": "^4.2.4"
   },
   "dependencies": {
-    "autumndb": "^21.2.0",
     "debugnyan": "^3.0.0",
     "dockerode": "^3.3.1",
-    "fs-extra": "^10.1.0",
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
     "node-rsa": "^1.1.1",

@@ -4,10 +4,10 @@ import * as stream from 'stream';
 import { promisify } from 'util';
 import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
-import { ActorCredentials } from './types';
 import { TaskContract } from './task';
 import { Contract } from './contract';
 import { spawn, streamToString } from './util';
+import { ActorCredentials } from './actor';
 
 export const mimeType = {
 	dockerManifest: 'application/vnd.docker.distribution.manifest.v2+json',

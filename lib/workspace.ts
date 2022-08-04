@@ -4,9 +4,8 @@ import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import { emptyDir } from './util';
 import { createArtifactUri, Registry } from './registry';
-import { ActorCredentials } from './types';
-import { hasArtifact } from './contract';
 import { InputManifest } from './manifest';
+import { ActorCredentials } from './actor';
 
 export interface Workspace {
 	inputDir: string;
@@ -40,7 +39,7 @@ export async function prepareWorkspace(
 		inputArtifactPath = opts.cachedArtifactPath;
 	} else {
 		inputArtifactPath = await emptyDir(path.join(inputDir, 'artifact'));
-		if (hasArtifact(manifest.contract)) {
+		if (manifest.input.data.hasArtifact) {
 			const artifactUri = createArtifactUri(
 				registry.registryUri,
 				manifest.transformer,

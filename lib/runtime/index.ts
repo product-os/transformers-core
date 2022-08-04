@@ -1,6 +1,5 @@
-import { OutputManifest } from '../types';
 import { Workspace } from '../workspace';
-import { InputManifest } from '../manifest';
+import { InputManifest, OutputManifest } from '../manifest';
 export * from './container-runtime';
 
 export interface TransformerRuntime {

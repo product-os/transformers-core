@@ -1,3 +1,9 @@
+/**
+ * Copied from transformer-worker
+ *
+ * TODO: cleanup, remove debugnyan
+ */
+
 import { AsyncLocalStorage } from 'async_hooks';
 import * as Logger from 'bunyan';
 

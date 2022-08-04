@@ -1,39 +1,24 @@
 import * as skhema from 'skhema';
-import { TransformerContract } from './types';
 import { Contract } from './contract';
-
-type TransformerSet = TransformerContract[];
+import { TransformerSet } from './transformer';
 
 export function matchTransformers(
 	transformers: TransformerSet,
 	previousContract: Contract<any> | null,
 	currentContract: Contract<any>,
 ) {
-	const isArtifactReady = currentContract.data?.$transformer?.artifactReady;
-	const hasArtifactReadyChanged =
-		previousContract?.data?.$transformer?.artifactReady !== isArtifactReady;
-
 	return transformers.filter((transformer) => {
-		if (!transformer.data.inputFilter) {
+		if (!transformer.data.filter) {
 			return false;
 		}
 		const matchesCurrent = skhema.isValid(
-			transformer.data.inputFilter,
+			transformer.data.filter,
 			currentContract,
 		);
 		const matchesPrevious = skhema.isValid(
-			transformer.data.inputFilter,
+			transformer.data.filter,
 			previousContract || {},
 		);
-
-		// match transformer if inputFilter MATCHES CURRENT contract AND
-		// artifact READY and artifact has CHANGED from previous
-		const matchOnceWithArtifact = isArtifactReady && hasArtifactReadyChanged;
-		// OR artifact NOT READY and was NOT MATCHED previously
-		const matchOnceWithoutArtifact = !isArtifactReady && !matchesPrevious;
-
-		return (
-			matchesCurrent && (matchOnceWithArtifact || matchOnceWithoutArtifact)
-		);
+		return matchesCurrent && !matchesPrevious;
 	});
 }
