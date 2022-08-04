@@ -1,3 +1,8 @@
+/**
+ * Copied from transformer-worker
+ *
+ * TODO: use logger instead of debugnyan, cleanup code
+ */
 // tslint:disable-next-line:no-var-requires
 const debugnyan = require('debugnyan');
 import * as NodeRSA from 'node-rsa';

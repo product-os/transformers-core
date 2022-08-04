@@ -1,29 +1,27 @@
-import { createTaskDefinition } from '../../lib';
-import { contractFactory } from '../helpers/contract-factory';
+import { contractFactory, createTask, TransformerContract } from '../../lib';
 
 describe('Tasks', function () {
 	describe('create task', function () {
-		const loop = 'test';
-		const transformer = contractFactory(loop, {
-			handle: 'some-transformer',
+		const transformer: TransformerContract = contractFactory({
+			type: 'transformer',
+			repo: 'some-transformer',
+			loop: 'test',
 			version: '1.0.0',
-			type: 'transformer@1.0.0',
-			data: { inputFilter: {}, backflowMapping: [] },
+			typeVersion: '^1.0.0',
+			data: { filter: {}, autoFinalize: true },
 		});
-		const inputContract = contractFactory(loop, {
-			handle: 'some-source',
+		const input = contractFactory({
+			type: 'source',
+			repo: 'some-source',
+			loop: 'test',
 			version: '1.0.0',
-			type: 'source@1.0.0',
+			typeVersion: '^1.0.0',
 			data: {},
 		});
 		const actorId = 'foobar';
 		it('should create task contract', function () {
-			const taskContract = createTaskDefinition(
-				actorId,
-				inputContract,
-				transformer,
-			);
-			expect(taskContract.data.input).toEqual(inputContract);
+			const taskContract = createTask(actorId, input, transformer);
+			expect(taskContract.data.input).toEqual(input);
 			expect(taskContract.data.transformer).toEqual(transformer);
 			expect(taskContract.data.actor).toEqual(actorId);
 			expect(taskContract.data.status).toEqual('pending');

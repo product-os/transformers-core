@@ -1,52 +1,47 @@
-import { ArtifactContract, TransformerContract } from './types';
-import { slugify } from './slugify';
-import { JSONSchema6 } from 'json-schema';
-import { Contract, ContractData, ContractDefinition } from './contract';
+import { Contract, createSlug } from './contract';
+import { randomUUID } from 'crypto';
+import { TransformerContract } from './transformer';
 
-export interface TaskDefinitionData {
+export interface TaskData {
 	actor: string;
-	input: {
-		id: string;
-	};
-	status: string;
-	transformer: {
-		id: string;
-	};
-	workerFilter: {
-		schema: JSONSchema6 | undefined;
-	};
-}
-
-export interface TaskData extends ContractData {
-	actor: string;
-	input: ArtifactContract;
+	input: Contract<any>;
+	previousOutput?: Contract<any>;
 	transformer: TransformerContract;
+	status: 'pending' | 'complete';
 }
 
-export interface TaskContract extends Contract<TaskData> {}
+export interface TaskContract extends Contract<TaskData> {
+	type: 'task';
+}
 
-export interface TaskDefinition
-	extends ContractDefinition<TaskDefinitionData> {}
-
-export function createTaskDefinition(
-	actorId: string,
+export function createTask(
+	actor: string,
 	input: Contract<any>,
 	transformer: TransformerContract,
-): TaskDefinition & { handle: string } {
-	const name = `Transform "${input.name}" using transformer "${transformer.name}"`;
+	previousOutput?: Contract<any>,
+): TaskContract {
+	// TODO: generic solution for inbuilt/null loop
+	const loop = 'product-os';
+	const repo = input.repo;
+	const type = 'task';
+	const version = randomUUID();
+
 	return {
-		name,
-		handle: slugify(name),
-		version: '1.0.0',
-		type: 'task@1.0.0',
+		slug: createSlug({ loop, repo, type, version }),
+		name: `Transform "${input.name}" using transformer "${transformer.name}"`,
+		repo,
+		loop,
+		version,
+		type,
+		typeVersion: '^1.0.0',
 		data: {
 			status: 'pending',
 			input,
+			previousOutput,
 			transformer,
-			actor: actorId,
-			workerFilter: {
-				schema: transformer.data?.workerFilter,
-			},
+			actor,
 		},
+		provides: [],
+		requires: [],
 	};
 }

@@ -4,11 +4,12 @@ import * as path from 'path';
 import * as stream from 'stream';
 import * as Dockerode from 'dockerode';
 import * as Logger from 'bunyan';
-import type { ErrorContractDefinition, OutputManifest } from '../types';
 import { randomUUID } from 'crypto';
 import { createDecryptor } from '../secrets';
 import { Workspace } from '../workspace';
-import { InputManifest } from '../manifest';
+import { InputManifest, OutputManifest } from '../manifest';
+import { ErrorContract } from '../error';
+import { contractFactory } from '../contract';
 
 export class ContainerRuntime {
 	private logger: Logger;
@@ -39,13 +40,15 @@ export class ContainerRuntime {
 		const runId = randomUUID();
 		const logger = this.logger.child({
 			runId,
-			transformer: inputManifest.transformer.id,
-			input: inputManifest.contract.id,
+			transformer: inputManifest.transformer.slug,
+			input: inputManifest.input.slug,
 			...logMeta,
 		});
 
+		// TODO: reconsider secrets handling, should contracts and transformers really hard code secrets in their contract?
+		// TODO: move decryption outside of the runtime, decryption should be generalized not runtime specific
 		inputManifest.decryptedSecrets = this.decryptor(
-			inputManifest.contract.data.$transformer?.encryptedSecrets,
+			inputManifest.input.data.$transformer?.encryptedSecrets,
 		);
 
 		inputManifest.decryptedTransformerSecrets = this.decryptor(
@@ -137,27 +140,23 @@ export class ContainerRuntime {
 			);
 		} catch (error: any) {
 			logger.error({ error }, 'ERROR RUNNING TRANSFORMER');
-			const errorContract: ErrorContractDefinition = {
-				type: 'error@1.0.0',
-				version: '1.0.0',
-				name: `Runtime Error - ${inputManifest.transformer.name}`,
+
+			const errorContract: ErrorContract = contractFactory({
+				loop: 'product-os', // TODO: replace with inbuilt loop
+				type: 'error',
+				repo: 'error',
+				typeVersion: '^1.0.0',
+				version: randomUUID(),
+				name: `Error running ${inputManifest.transformer.slug}`,
 				data: {
 					message: error.message,
-					code: error.code ?? '1',
-					transformer: `${inputManifest.transformer.slug}@${inputManifest.transformer.version}`,
-					expectedOutputTypes:
-						inputManifest.transformer.data?.expectedOutputTypes ?? [],
-					stdOutTail: stdOutTail.join(''),
-					stdErrTail: stdErrTail.join(''),
-					$transformer: {
-						artifactReady: false,
-						// In a graph of transformations many error contracts can be produced
-						// Appending the Transformer slug would help, but it's possible that the same Transformer runs
-						// on several contracts in the graph, so that wouldn't fix the issue
-						slugSuffix: new Date().getTime().toString(),
-					},
+					code: String(error.code) ?? '1',
+					input: inputManifest.input,
+					transformer: inputManifest.transformer,
+					outTail: stdOutTail.join(''),
+					errTail: stdErrTail.join(''),
 				},
-			};
+			});
 
 			// Check if output manifest exists
 			try {
