@@ -48,7 +48,7 @@ export class ContainerRuntime {
 		// TODO: reconsider secrets handling, should contracts and transformers really hard code secrets in their contract?
 		// TODO: move decryption outside of the runtime, decryption should be generalized not runtime specific
 		inputManifest.decryptedSecrets = this.decryptor(
-			inputManifest.input.data.$transformer?.encryptedSecrets,
+			inputManifest.input.data?.$transformer?.encryptedSecrets,
 		);
 
 		inputManifest.decryptedTransformerSecrets = this.decryptor(
@@ -140,14 +140,13 @@ export class ContainerRuntime {
 			);
 		} catch (error: any) {
 			logger.error({ error }, 'ERROR RUNNING TRANSFORMER');
-
 			const errorContract: ErrorContract = contractFactory({
-				loop: 'product-os', // TODO: replace with inbuilt loop
+				title: `Error running ${inputManifest.transformer.slug}`,
+				name: inputManifest.transformer.name,
 				type: 'error',
-				repo: 'error',
-				typeVersion: '^1.0.0',
+				loop: inputManifest.transformer.loop,
 				version: randomUUID(),
-				name: `Error running ${inputManifest.transformer.slug}`,
+				typeVersion: '1.0.0',
 				data: {
 					message: error.message,
 					code: String(error.code) ?? '1',
@@ -157,7 +156,6 @@ export class ContainerRuntime {
 					errTail: stdErrTail.join(''),
 				},
 			});
-
 			// Check if output manifest exists
 			try {
 				await fs.promises.access(
@@ -182,7 +180,6 @@ export class ContainerRuntime {
 					'Did not find output manifest',
 				);
 			}
-
 			// Return the output manifest
 			return {
 				results: [

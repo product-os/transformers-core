@@ -1,4 +1,4 @@
-import { Contract, createSlug } from './contract';
+import { Contract, contractFactory } from './contract';
 import { randomUUID } from 'crypto';
 import { TransformerContract } from './transformer';
 
@@ -20,20 +20,13 @@ export function createTask(
 	transformer: TransformerContract,
 	previousOutput?: Contract<any>,
 ): TaskContract {
-	// TODO: generic solution for inbuilt/null loop
-	const loop = 'product-os';
-	const repo = input.repo;
-	const type = 'task';
-	const version = randomUUID();
-
-	return {
-		slug: createSlug({ loop, repo, type, version }),
-		name: `Transform "${input.name}" using transformer "${transformer.name}"`,
-		repo,
-		loop,
-		version,
-		type,
-		typeVersion: '^1.0.0',
+	return contractFactory({
+		title: `Transform "${input.name}" using transformer "${transformer.name}"`,
+		name: transformer.name,
+		loop: transformer.loop,
+		version: randomUUID(),
+		type: 'task',
+		typeVersion: '1.0.0',
 		data: {
 			status: 'pending',
 			input,
@@ -41,7 +34,5 @@ export function createTask(
 			transformer,
 			actor,
 		},
-		provides: [],
-		requires: [],
-	};
+	}) as TaskContract;
 }

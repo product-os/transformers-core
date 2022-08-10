@@ -1,9 +1,7 @@
 const fs = require('fs')
+const {randomUUID} = require("crypto");
 
 console.log('Starting test transformer')
-
-console.log('Reading input manifest')
-const inputManifest = JSON.parse(fs.readFileSync('/input/manifest.json').toString())
 
 console.log('Reading input artifact path')
 const artifact = fs.readFileSync('/input/artifact').toString()
@@ -16,12 +14,15 @@ if (artifact === 'Hello world!') {
 	fs.writeFileSync(outputArtifactPath, 'Sorry, I dont understand!')
 }
 
-const outputContract = inputManifest.contract.data.fragment
-
 const result = {
 	results: [
 		{
-			contract: outputContract,
+			contract: {
+				name: 'greeting',
+				type: 'text-file',
+				version: randomUUID(),
+				typeVersion: '1.0.0'
+			},
 			artifactPath: outputArtifactPath,
 		},
 	],

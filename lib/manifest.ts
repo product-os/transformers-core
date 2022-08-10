@@ -1,5 +1,5 @@
 import { TaskContract } from './task';
-import { Contract, ContractDefinition } from './contract';
+import { Contract, ContractSource } from './contract';
 import { TransformerContract } from './transformer';
 
 export interface InputManifest {
@@ -11,7 +11,7 @@ export interface InputManifest {
 }
 
 export interface Result<TData> {
-	contract: ContractDefinition<TData>;
+	contract: ContractSource<TData>;
 	artifactPath?: string;
 	imagePath?: string;
 	manifestList?: string[];
