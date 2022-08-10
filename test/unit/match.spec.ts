@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
 	contractFactory,
 	matchTransformers,
@@ -24,9 +25,9 @@ describe('Transformers', function () {
 		};
 		const matchTransformer: TransformerContract = contractFactory({
 			type: 'transformer',
-			repo: 'match-me',
+			name: 'match-me',
 			loop: 'test',
-			version: '1.0.0',
+			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: { filter: filterEqualsInput },
 			requires: [],
@@ -34,9 +35,9 @@ describe('Transformers', function () {
 		});
 		const notMatchTransformer: TransformerContract = contractFactory({
 			type: 'transformer',
-			repo: 'match-me-not',
+			name: 'match-me-not',
 			loop: 'test',
-			version: '1.0.0',
+			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: { filter: filterNotEqualsInput },
 			requires: [],
@@ -44,9 +45,9 @@ describe('Transformers', function () {
 		});
 		const input = contractFactory({
 			type: 'source',
-			repo: 'test',
+			name: 'test',
 			loop: 'test',
-			version: '1.0.0',
+			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: {},
 		});

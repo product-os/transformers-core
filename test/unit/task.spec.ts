@@ -4,18 +4,18 @@ describe('Tasks', function () {
 	describe('create task', function () {
 		const transformer: TransformerContract = contractFactory({
 			type: 'transformer',
-			repo: 'some-transformer',
+			name: 'some-transformer',
 			loop: 'test',
 			version: '1.0.0',
-			typeVersion: '^1.0.0',
+			typeVersion: '1.0.0',
 			data: { filter: {}, autoFinalize: true },
 		});
 		const input = contractFactory({
 			type: 'source',
-			repo: 'some-source',
+			name: 'some-source',
 			loop: 'test',
 			version: '1.0.0',
-			typeVersion: '^1.0.0',
+			typeVersion: '1.0.0',
 			data: {},
 		});
 		const actorId = 'foobar';

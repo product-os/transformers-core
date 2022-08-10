@@ -39,16 +39,15 @@ export async function prepareWorkspace(
 		inputArtifactPath = opts.cachedArtifactPath;
 	} else {
 		inputArtifactPath = await emptyDir(path.join(inputDir, 'artifact'));
-		if (manifest.input.data.hasArtifact) {
-			const artifactUri = createArtifactUri(
-				registry.registryUri,
-				manifest.transformer,
-			);
-			await registry.pullArtifact(artifactUri, inputArtifactPath, {
-				username: credentials.slug,
-				password: credentials.sessionToken,
-			});
-		}
+		// TODO: test if contract has artifact
+		const artifactUri = createArtifactUri(
+			registry.registryUri,
+			manifest.transformer,
+		);
+		await registry.pullArtifact(artifactUri, inputArtifactPath, {
+			username: credentials.slug,
+			password: credentials.sessionToken,
+		});
 	}
 	const outputDir = await emptyDir(path.join(basePath, uuid, 'output'));
 	return {

@@ -1,5 +1,5 @@
 import { JSONSchema6 } from 'json-schema';
-import { Contract, ContractData, ContractDefinition } from './contract';
+import { Contract, ContractData, ContractSource } from './contract';
 
 export type TransformerSet = TransformerContract[];
 
@@ -10,6 +10,6 @@ export interface TransformerData extends ContractData {
 }
 
 export interface TransformerDefinition
-	extends ContractDefinition<TransformerData> {}
+	extends ContractSource<TransformerData> {}
 
 export interface TransformerContract extends Contract<TransformerData> {}

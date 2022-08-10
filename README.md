@@ -31,4 +31,3 @@ Comparison with Jellyfish contracts:
 - unify/clarify artifact uri and "reference" naming
 - how to support the null loop
   - should slugs with-out the loop be supported `repo/type:version`
-- consider how to handle `hasArtifact`

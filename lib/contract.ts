@@ -3,55 +3,65 @@ export interface ContractData {
 }
 
 /**
- * ContractDefinition is the bare minimum contract that humans work with, contextual and optional fields may be omitted
+ * ContractSource is a contract as defined in source code authored by users. Since users must define it, the
+ * requirements should be as minimal as possible only `type`, `version`, and `typeVersion` are required.
+ *
+ * The `name` and `loop` field are not required, they are inferred from the repo origin `owner` and `name` respectively.
+ *
+ * Versioning tools may be used to add and maintain the version fields.
  */
-export interface ContractDefinition<TData = ContractData> {
+export interface ContractSource<TData = ContractData> {
 	/**
 	 * Optional human descriptors, not used as keys
 	 */
-	name?: string;
+	title?: string;
 	description?: string;
 	/**
-	 * Human's must set the `type`, `typeVersion` and `version`, versioning tools may set the `version` on behalf of the human.
+	 * If contract is defined in a source repo: when the contract is imported the `name` and `loop` will be set to the
+	 * org and repo value respectively.
+	 */
+	name?: string;
+	loop?: string;
+	/**
+	 * If contract is defined in a source repo: users must define the `type`, `typeVersion` and `version`. The `version`
+	 * may be set by versioning tools on behalf of the user.
 	 */
 	version: string;
 	type: string;
-	/**
-	 * Semver range
-	 */
 	typeVersion: string;
-	repo?: string;
-	loop?: string;
 	/**
 	 * The data associated with this contract.
 	 */
-	data?: TData & { hasArtifact?: boolean };
+	data?: TData;
 	/**
 	 * A list of requirements/dependencies for this contract.
 	 */
-	requires?: Array<{
-		[k: string]: unknown;
-	}>;
+	requires?:
+		| Array<{
+				[k: string]: unknown;
+		  }>
+		| string[];
 	/**
 	 * A list of capabilities for this contract.
 	 */
-	capabilities?: Array<{
-		[k: string]: unknown;
-	}>;
+	capabilities?:
+		| Array<{
+				[k: string]: unknown;
+		  }>
+		| string[];
 }
 
 /**
- * Contract makes ContractDefinition optional fields requires.
+ * Contract must be fully qualified. All fields are required.
  */
-export interface Contract<TData = ContractData>
-	extends ContractDefinition<TData> {
+export interface Contract<TData = ContractData> extends ContractSource<TData> {
+	name: string;
 	type: string;
-	repo: string;
 	loop: string;
 	slug: string;
 	typeVersion: string;
 	version: string;
-	data: TData & { hasArtifact?: boolean };
+	data: TData;
 	requires: Array<{
 		[k: string]: unknown;
 	}>;
@@ -75,16 +85,16 @@ export function contractFactory(
 	};
 }
 
-export function createSlug({
+function createSlug({
 	loop,
-	repo,
+	name,
 	type,
 	version,
 }: {
 	loop: string;
-	repo: string;
+	name: string;
 	type: string;
 	version: string;
 }) {
-	return `${loop}/${repo}/${type}:${version}`;
+	return `${loop}/${name}/${type}:${version}`;
 }
