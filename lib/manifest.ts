@@ -17,6 +17,8 @@ export interface Result<TData> {
 	manifestList?: string[];
 }
 
+export type Results = Array<Result<any>>;
+
 export interface OutputManifest {
 	results: Array<Result<any>>;
 }
