@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import {
-	contractFactory,
+	createContract,
 	matchTransformers,
 	TransformerContract,
 } from '../../lib';
@@ -8,7 +8,6 @@ import {
 describe('Transformers', function () {
 	describe('matchTransformers()', function () {
 		// TODO: semver match version
-
 		const filterEqualsInput = {
 			type: 'object',
 			required: ['type'],
@@ -23,27 +22,23 @@ describe('Transformers', function () {
 				type: { const: 'else' },
 			},
 		};
-		const matchTransformer: TransformerContract = contractFactory({
+		const matchTransformer: TransformerContract = createContract({
 			type: 'transformer',
 			name: 'match-me',
 			loop: 'test',
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: { filter: filterEqualsInput },
-			requires: [],
-			capabilities: [],
 		});
-		const notMatchTransformer: TransformerContract = contractFactory({
+		const notMatchTransformer: TransformerContract = createContract({
 			type: 'transformer',
 			name: 'match-me-not',
 			loop: 'test',
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: { filter: filterNotEqualsInput },
-			requires: [],
-			capabilities: [],
 		});
-		const input = contractFactory({
+		const input = createContract({
 			type: 'source',
 			name: 'test',
 			loop: 'test',

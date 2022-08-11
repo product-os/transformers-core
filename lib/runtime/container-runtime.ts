@@ -9,7 +9,7 @@ import { createDecryptor } from '../secrets';
 import { Workspace } from '../workspace';
 import { InputManifest, OutputManifest } from '../manifest';
 import { ErrorContract } from '../error';
-import { contractFactory } from '../contract';
+import { createContract } from '../contract';
 
 export class ContainerRuntime {
 	private logger: Logger;
@@ -140,7 +140,7 @@ export class ContainerRuntime {
 			);
 		} catch (error: any) {
 			logger.error({ error }, 'ERROR RUNNING TRANSFORMER');
-			const errorContract: ErrorContract = contractFactory({
+			const errorContract = createContract({
 				title: `Error running ${inputManifest.transformer.slug}`,
 				name: inputManifest.transformer.name,
 				type: 'error',
@@ -155,7 +155,7 @@ export class ContainerRuntime {
 					outTail: stdOutTail.join(''),
 					errTail: stdErrTail.join(''),
 				},
-			});
+			}) as ErrorContract;
 			// Check if output manifest exists
 			try {
 				await fs.promises.access(
