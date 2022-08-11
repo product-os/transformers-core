@@ -1,8 +1,8 @@
-import { contractFactory, createTask, TransformerContract } from '../../lib';
+import { createContract, createTask, TransformerContract } from '../../lib';
 
 describe('Tasks', function () {
 	describe('create task', function () {
-		const transformer: TransformerContract = contractFactory({
+		const transformer: TransformerContract = createContract({
 			type: 'transformer',
 			name: 'some-transformer',
 			loop: 'test',
@@ -10,7 +10,7 @@ describe('Tasks', function () {
 			typeVersion: '1.0.0',
 			data: { filter: {}, autoFinalize: true },
 		});
-		const input = contractFactory({
+		const input = createContract({
 			type: 'source',
 			name: 'some-source',
 			loop: 'test',

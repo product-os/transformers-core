@@ -3,6 +3,8 @@ import { TransformerContract } from './transformer';
 import { OutputManifest } from './manifest';
 
 export interface ErrorContract extends Contract {
+	type: 'error';
+	typeVersion: '1.0.0';
 	data: {
 		message: string;
 		code: string;

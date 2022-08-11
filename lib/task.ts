@@ -1,4 +1,4 @@
-import { Contract, contractFactory } from './contract';
+import { Contract, createContract } from './contract';
 import { randomUUID } from 'crypto';
 import { TransformerContract } from './transformer';
 
@@ -20,7 +20,7 @@ export function createTask(
 	transformer: TransformerContract,
 	previousOutput?: Contract<any>,
 ): TaskContract {
-	return contractFactory({
+	return createContract({
 		title: `Transform "${input.name}" using transformer "${transformer.name}"`,
 		name: transformer.name,
 		loop: transformer.loop,

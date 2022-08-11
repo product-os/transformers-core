@@ -36,52 +36,55 @@ export interface ContractSource<TData = ContractData> {
 	/**
 	 * A list of requirements/dependencies for this contract.
 	 */
-	requires?:
-		| Array<{
-				[k: string]: unknown;
-		  }>
-		| string[];
+	requires?: Array<{ [k: string]: unknown }> | string[];
 	/**
-	 * A list of capabilities for this contract.
+	 * A list of providers/interfaces for this contract.
 	 */
-	capabilities?:
-		| Array<{
-				[k: string]: unknown;
-		  }>
-		| string[];
+	provides?: Array<{ [k: string]: unknown }> | string[];
 }
 
 /**
- * Contract must be fully qualified. All fields are required.
+ * Represents a contract that has been imported from source, requires identity fields inferred from source are set.
  */
-export interface Contract<TData = ContractData> extends ContractSource<TData> {
+export interface ContractImported<TData = ContractData>
+	extends ContractSource<TData> {
 	name: string;
-	type: string;
 	loop: string;
-	slug: string;
-	typeVersion: string;
-	version: string;
 	data: TData;
-	requires: Array<{
-		[k: string]: unknown;
-	}>;
-	provides: Array<{
-		[k: string]: unknown;
-	}>;
 }
 
-type MakeOptional<Type, Key extends keyof Type> = Omit<Type, Key> &
-	Partial<Pick<Type, Key>>;
+/**
+ * Contract must be fully qualified. All functional fields are required. Decorator fields title and description are not
+ * required.
+ */
+export interface Contract<TData = ContractData>
+	extends ContractImported<TData> {
+	slug: string;
+	requires: Array<{ [k: string]: unknown }> | string[];
+	provides: Array<{ [k: string]: unknown }> | string[];
+}
 
-// TODO: remove any
-export function contractFactory(
-	fields: MakeOptional<Contract, 'slug' | 'requires' | 'provides'>,
-): Contract<any> {
+// TODO: allow for type parameters to remove `any`
+export function createContractImported(
+	loop: string,
+	name: string,
+	source: ContractSource<any>,
+): ContractImported<any> {
 	return {
-		slug: fields.slug || createSlug(fields),
-		requires: fields.requires || [],
-		provides: fields.provides || [],
-		...fields,
+		name,
+		loop,
+		data: source.data || {},
+		...source,
+	};
+}
+
+// TODO: allow for type parameters to remove `any`
+export function createContract(imported: ContractImported<any>): Contract<any> {
+	return {
+		slug: createSlug(imported),
+		requires: imported.requires || [],
+		provides: imported.provides || [],
+		...imported,
 	};
 }
 
