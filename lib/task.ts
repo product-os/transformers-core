@@ -5,7 +5,7 @@ import { TransformerContract } from './transformer';
 export interface TaskData {
 	actor: string;
 	input: Contract<any>;
-	previousOutput?: Contract<any>;
+	previousOutput?: Array<Contract<any>>;
 	transformer: TransformerContract;
 	status: 'pending' | 'complete';
 }
@@ -18,7 +18,7 @@ export function createTask(
 	actor: string,
 	input: Contract<any>,
 	transformer: TransformerContract,
-	previousOutput?: Contract<any>,
+	previousOutput?: Array<Contract<any>>,
 ): TaskContract {
 	return createContract({
 		title: `Transform "${input.name}" using transformer "${transformer.name}"`,
