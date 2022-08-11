@@ -88,16 +88,19 @@ export function createContract(imported: ContractImported<any>): Contract<any> {
 	};
 }
 
-function createSlug({
-	loop,
-	name,
-	type,
-	version,
-}: {
-	loop: string;
-	name: string;
-	type: string;
-	version: string;
-}) {
-	return `${loop}/${name}/${type}:${version}`;
+export function createSlug(
+	{
+		loop,
+		name,
+		type,
+		version,
+	}: {
+		loop: string;
+		name: string;
+		type: string;
+		version: string;
+	},
+	includeVersion = true,
+) {
+	return `${loop}/${name}/${type}${includeVersion ? ':' + version : ''}`;
 }
