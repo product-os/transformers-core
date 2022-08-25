@@ -7,8 +7,9 @@ import * as Logger from 'bunyan';
 import { randomUUID } from 'crypto';
 import { createDecryptor } from '../secrets';
 import { Workspace } from '../workspace';
-import { InputManifest, OutputManifest } from '../manifest';
-import { ErrorContract } from '../error';
+import { InputManifest } from '../input';
+import { OutputManifest } from '../output';
+import { ErrorType } from '../error';
 import { createContract } from '../contract';
 
 export class ContainerRuntime {
@@ -29,7 +30,7 @@ export class ContainerRuntime {
 	}
 
 	async runTransformer(
-		inputManifest: InputManifest,
+		inputManifest: InputManifest<any>,
 		workspace: Workspace,
 		imageRef: string,
 		privileged: boolean,
@@ -140,10 +141,10 @@ export class ContainerRuntime {
 			);
 		} catch (error: any) {
 			logger.error({ error }, 'ERROR RUNNING TRANSFORMER');
-			const errorContract = createContract({
+			const errorContract = createContract<ErrorType>({
 				title: `Error running ${inputManifest.transformer.slug}`,
-				name: inputManifest.transformer.name,
 				type: 'error',
+				name: inputManifest.transformer.name,
 				loop: inputManifest.transformer.loop,
 				version: randomUUID(),
 				typeVersion: '1.0.0',
@@ -155,7 +156,7 @@ export class ContainerRuntime {
 					outTail: stdOutTail.join(''),
 					errTail: stdErrTail.join(''),
 				},
-			}) as ErrorContract;
+			});
 			// Check if output manifest exists
 			try {
 				await fs.promises.access(

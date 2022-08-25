@@ -1,15 +1,17 @@
 import { JSONSchema6 } from 'json-schema';
-import { Contract, ContractData, ContractSource } from './contract';
+import { Contract, ContractSource, ContractType } from './contract';
 
 export type TransformerSet = TransformerContract[];
 
-export interface TransformerData extends ContractData {
-	filter: JSONSchema6;
-	autoFinalize: boolean;
-	encryptedSecrets?: any;
+export interface TransformerType extends ContractType {
+	type: 'transformer';
+	typeVersion: '1.0.0';
+	data: {
+		filter: JSONSchema6;
+		autoFinalize: boolean;
+		encryptedSecrets?: any;
+	};
 }
 
-export interface TransformerDefinition
-	extends ContractSource<TransformerData> {}
-
-export interface TransformerContract extends Contract<TransformerData> {}
+export type TransformerSource = ContractSource<TransformerType>;
+export type TransformerContract = Contract<TransformerType>;

@@ -3,9 +3,8 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import { emptyDir } from './util';
-import { createArtifactUri, Registry } from './registry';
-import { InputManifest } from './manifest';
-import { ActorCredentials } from './actor';
+import { Registry } from './registry';
+import { InputManifest } from './input';
 
 export interface Workspace {
 	inputDir: string;
@@ -20,9 +19,8 @@ export interface WorkspaceOptions {
 }
 
 export async function prepareWorkspace(
-	credentials: ActorCredentials,
 	registry: Registry,
-	manifest: InputManifest,
+	manifest: InputManifest<any>,
 	opts: WorkspaceOptions,
 ): Promise<Workspace> {
 	const basePath = opts.basePath || os.tmpdir();
@@ -40,14 +38,13 @@ export async function prepareWorkspace(
 	} else {
 		inputArtifactPath = await emptyDir(path.join(inputDir, 'artifact'));
 		// TODO: test if contract has artifact
-		const artifactUri = createArtifactUri(
-			registry.registryUri,
-			manifest.transformer,
+		const pullResult = await registry.pull(
+			manifest.transformer.slug,
+			manifest.transformer.version,
 		);
-		await registry.pullArtifact(artifactUri, inputArtifactPath, {
-			username: credentials.slug,
-			password: credentials.sessionToken,
-		});
+		if (pullResult.type === 'filesystem') {
+			inputArtifactPath = pullResult.path;
+		}
 	}
 	const outputDir = await emptyDir(path.join(basePath, uuid, 'output'));
 	return {

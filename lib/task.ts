@@ -1,38 +1,59 @@
-import { Contract, createContract } from './contract';
+// import {Contract, ContractSource, ContractType, createContract, ContractImported} from './contract';
 import { randomUUID } from 'crypto';
 import { TransformerContract } from './transformer';
+import {
+	Contract,
+	ContractType,
+	ContractSource,
+	createContract,
+} from './contract';
+import { InputManifest } from './input';
 
-export interface TaskData {
-	actor: string;
-	input: Contract<any>;
-	previousOutput?: Array<Contract<any>>;
-	transformer: TransformerContract;
-	status: 'pending' | 'complete';
+export enum TaskStatus {
+	Pending = 'pending',
+	Complete = 'compete',
 }
 
-export interface TaskContract extends Contract<TaskData> {
+export interface TaskType extends ContractType {
+	data: {
+		input: Contract<any>;
+		previousOutput?: Array<Contract<any>>;
+		transformer: TransformerContract;
+		status: TaskStatus;
+	};
 	type: 'task';
+	typeVersion: '1.0.0';
 }
 
-export function createTask(
-	actor: string,
+export type TaskSource = ContractSource<TaskType>;
+export type TaskContract = Contract<TaskType>;
+
+export function createTaskContract(
 	input: Contract<any>,
 	transformer: TransformerContract,
 	previousOutput?: Array<Contract<any>>,
 ): TaskContract {
-	return createContract({
+	return createContract<TaskType>({
 		title: `Transform "${input.name}" using transformer "${transformer.name}"`,
+		type: 'task',
 		name: transformer.name,
 		loop: transformer.loop,
 		version: randomUUID(),
-		type: 'task',
 		typeVersion: '1.0.0',
 		data: {
-			status: 'pending',
+			status: TaskStatus.Pending,
 			input,
 			previousOutput,
 			transformer,
-			actor,
 		},
-	}) as TaskContract;
+	});
+}
+
+export function createInputManifestFromTask<Type extends ContractType>(
+	task: TaskContract,
+): InputManifest<Type> {
+	return {
+		input: task.data.input,
+		transformer: task.data.transformer,
+	};
 }

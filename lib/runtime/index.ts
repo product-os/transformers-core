@@ -1,11 +1,12 @@
 import { Workspace } from '../workspace';
-import { InputManifest, OutputManifest } from '../manifest';
+import { InputManifest } from '../input';
+import { OutputManifest } from '../output';
 export * from './container-runtime';
 
 export interface TransformerRuntime {
 	// runtimes that support input contract and artifact
 	runTransformer(
-		input: InputManifest,
+		input: InputManifest<any>,
 		workspace: Workspace,
 		imageRef: string,
 		privileged: boolean,
@@ -15,7 +16,7 @@ export interface TransformerRuntime {
 
 	// runtimes that only support input contract
 	runTransformer(
-		input: InputManifest,
+		input: InputManifest<any>,
 		logMeta?: object,
 	): Promise<OutputManifest>;
 }

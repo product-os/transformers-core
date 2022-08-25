@@ -1,8 +1,8 @@
-import { createContract, createTask, TransformerContract } from '../../lib';
+import { createContract, createTaskContract, TransformerType } from '../../lib';
 
 describe('Tasks', function () {
 	describe('create task', function () {
-		const transformer: TransformerContract = createContract({
+		const transformer = createContract<TransformerType>({
 			type: 'transformer',
 			name: 'some-transformer',
 			loop: 'test',
@@ -18,12 +18,10 @@ describe('Tasks', function () {
 			typeVersion: '1.0.0',
 			data: {},
 		});
-		const actorId = 'foobar';
 		it('should create task contract', function () {
-			const taskContract = createTask(actorId, input, transformer);
+			const taskContract = createTaskContract(input, transformer);
 			expect(taskContract.data.input).toEqual(input);
 			expect(taskContract.data.transformer).toEqual(transformer);
-			expect(taskContract.data.actor).toEqual(actorId);
 			expect(taskContract.data.status).toEqual('pending');
 		});
 	});

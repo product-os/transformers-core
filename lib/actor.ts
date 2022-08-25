@@ -1,4 +1,4 @@
 export interface ActorCredentials {
-	slug: string;
-	sessionToken: string;
+	username: string;
+	token: string;
 }
