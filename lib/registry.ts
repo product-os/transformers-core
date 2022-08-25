@@ -1,88 +1,405 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as stream from 'stream';
-import { promisify } from 'util';
+import * as os from 'os';
+import { createHash, randomUUID } from 'crypto';
+import { PassThrough, Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import * as tar from 'tar';
+import * as Logger from 'bunyan';
 import * as Docker from 'dockerode';
-import fetch from 'node-fetch';
-import { TaskContract } from './task';
-import { Contract } from './contract';
-import { spawn, streamToString } from './util';
+import {
+	Manifest,
+	ManifestOCI,
+	MEDIATYPE_MANIFEST_V2,
+	MEDIATYPE_OCI_MANIFEST_V1,
+	parseIndex,
+	parseRepo,
+	parseRepoAndTag,
+	RegistryClientV2,
+	RegistryIndex,
+} from 'oci-registry-client';
+import { isDir, pathExists, streamToString } from './util';
 import { ActorCredentials } from './actor';
+import { isLocalhost } from 'oci-registry-client/build/common';
+import { ExtendableError } from './util/error';
+import { match } from 'ts-pattern';
 
-export const mimeType = {
-	dockerManifest: 'application/vnd.docker.distribution.manifest.v2+json',
-	ociManifest: 'application/vnd.oci.image.manifest.v1+json',
+const MEDIATYPE_OCI_CONFIG_FILE = 'vnd.balena.transformers.file.v1';
+const MEDIATYPE_OCI_CONFIG_OBJECT = 'vnd.balena.transformers.object.v1';
+const MEDIATYPE_OCI_CONFIG_DIRECTORY = 'vnd.balena.transformers.directory.v1';
+
+class NoLayersError extends ExtendableError {}
+class ImageLoadError extends ExtendableError {}
+class UnexpectedArtifactTypeError extends ExtendableError {
+	artifactType: string;
+	constructor(artifactType: string) {
+		super(`Artifact type "${artifactType}" not supported`);
+		this.artifactType = artifactType;
+	}
+}
+class ArtifactTypeUnsupportedError extends ExtendableError {
+	artifactType: string;
+	constructor(artifactType: string) {
+		super(`Artifact type "${artifactType}" not supported`);
+		this.artifactType = artifactType;
+	}
+}
+
+export enum ArtifactType {
+	image = 'image',
+	filesystem = 'filesystem',
+	object = 'object',
+	unsupported = 'unsupported',
+}
+
+export type ImageReference = { type: ArtifactType.image; name: string };
+export type FilesystemReference = {
+	type: ArtifactType.filesystem;
+	path: string;
 };
+export type ObjectReference = { type: ArtifactType.object; value: any };
+export type ArtifactReference =
+	| ImageReference
+	| FilesystemReference
+	| ObjectReference;
 
-const pump = promisify(stream.pipeline); // Node 16 gives native pipeline promise... This is needed to properly handle stream errors
-
-export interface RegistryAuthOptions {
-	username: string;
-	password: string;
-}
-
-export function createArtifactUri(registryUri: string, contract: Contract) {
-	return `${registryUri}/${contract.slug}:${contract.version}`;
-}
-
-export async function pullTransformerImage(
-	registry: Registry,
-	credentials: ActorCredentials,
-	task: TaskContract,
-) {
-	const imageURI = createArtifactUri(
-		registry.registryUri,
-		task.data.transformer,
-	);
-	return await registry.pullImage(imageURI, {
-		username: credentials.slug,
-		password: credentials.sessionToken,
-	});
-}
-
+/**
+ * Registry implements public push, pull methods for handling image, filesystem and json objects.
+ *
+ * Uses docker cli via `dockerode` package to push and pull images, to benefit from dockers layer
+ * caching and stable implementation.
+ *
+ * Use RegistryClientV2 from `oci-registry-client` package for push and pull filesystem and json.
+ */
 export class Registry {
-	public readonly registryUri: string;
-	public readonly docker: Docker;
-	private readonly logger: any;
-	// login cache to prevent unnecessary logins for the same user
-	private dockerLogins = new Set<string>();
+	private readonly index: RegistryIndex;
+	private readonly logger: Logger;
+	private readonly credentials: ActorCredentials;
+	private readonly docker: Docker;
+	private client: RegistryClientV2 | null;
 
-	constructor(logger: any, registryUri: string) {
-		this.logger = logger;
-		this.registryUri = registryUri;
-		this.docker = new Docker();
-	}
+	static DEFAULT_PORT = '5000';
 
-	public async pullImage(imageRef: string, authOpts: RegistryAuthOptions) {
-		this.logger.info({ imageRef }, 'pulling image');
-		const authconfig = this.getDockerAuthConfig(authOpts);
-		const progressStream = await this.docker.pull(imageRef, { authconfig });
-		await this.followDockerProgress(progressStream);
-		return imageRef;
-	}
-
-	public async pushImage(
-		imageRef: string,
-		imagePath: string,
-		authOpts: RegistryAuthOptions,
+	constructor(
+		logger: Logger,
+		credentials: ActorCredentials,
+		host: string,
+		port?: string,
+		scheme?: 'https' | 'http' | 'ssh',
 	) {
-		this.logger.info({ imageRef }, 'pushing image');
-		const image = await this.loadImage(imagePath);
-		const { registry, repo, tag } = this.parseRef(imageRef);
-		await image.tag({ repo: `${registry}/${repo}`, tag, force: true });
-		const taggedImage = await this.docker.getImage(imageRef);
-		const authconfig = this.getDockerAuthConfig(authOpts);
-		const pushOpts = { registry, authconfig };
-		this.logger.info({ image: taggedImage.id }, 'pushing image');
-		const progressStream = await taggedImage.push(pushOpts);
+		this.credentials = credentials;
+		this.logger = logger;
+		if (!port) {
+			port = Registry.DEFAULT_PORT;
+		}
+		if (!scheme) {
+			scheme = isLocalhost(host) ? 'http' : 'https';
+		}
+		this.index = parseIndex(`${scheme}://${host}${port ? ':' + port : ''}`);
+		this.docker = new Docker();
+		this.client = null;
+	}
+
+	/**
+	 * Public methods
+	 */
+
+	async pull(
+		repo: string,
+		tag: string,
+		assertType: ArtifactType.filesystem,
+	): Promise<FilesystemReference>;
+	async pull(
+		repo: string,
+		tag: string,
+		assertType: ArtifactType.image,
+	): Promise<ImageReference>;
+	async pull(
+		repo: string,
+		tag: string,
+		assertType: ArtifactType.object,
+	): Promise<ObjectReference>;
+	async pull(
+		repo: string,
+		tag: string,
+		assertType?: ArtifactType,
+	): Promise<ArtifactReference>;
+	async pull(
+		repo: string,
+		tag: string,
+		assertType: ArtifactType,
+	): Promise<ArtifactReference> {
+		const client = this.getRegistryClient(repo);
+		const { manifest } = await client.getManifest({
+			ref: tag,
+			acceptManifestLists: true,
+			acceptOCIManifests: true,
+		});
+		const type = this.getArtifactType(manifest);
+		if (assertType && type !== assertType) {
+			throw new UnexpectedArtifactTypeError(type);
+		}
+		if (type === ArtifactType.image) {
+			return await this.pullImage(`${client.repo.canonicalName}:${tag}`);
+		} else if (
+			type === ArtifactType.filesystem ||
+			type === ArtifactType.object
+		) {
+			return await this.pullArtifact(repo, tag, manifest as ManifestOCI, type);
+		} else {
+			throw new ArtifactTypeUnsupportedError(manifest.mediaType || 'undefined');
+		}
+	}
+
+	async push(repo: string, tag: string, reference: ArtifactReference) {
+		if (reference.type === 'image') {
+			return await this.pushImage(repo, tag, reference);
+		} else if (reference.type === 'object' || reference.type === 'filesystem') {
+			return await this.pushArtifact(repo, tag, reference);
+		} else {
+			throw new ArtifactTypeUnsupportedError(
+				(reference as any).type || 'undefined',
+			);
+		}
+	}
+
+	async loadImage(imagePath: string) {
+		if (!(await pathExists(imagePath))) {
+			throw Error(`Image path does not exist: ${imagePath}`);
+		}
+		const stdout = await this.docker.loadImage(fs.createReadStream(imagePath));
+		const result = await streamToString(stdout);
+		// docker.load example output:
+		// Loaded image: myApp/myImage
+		// Loaded image ID: sha256:1247839245789327489102473
+		const images = result.match(/Loaded image.*?: (\S+)\\n/i);
+		if (!images) {
+			throw new ImageLoadError(`failed to load image ${imagePath}: ${result}`);
+		}
+		return images[1];
+	}
+
+	/**
+	 * Private methods
+	 */
+
+	private getArtifactType(manifest: Manifest): ArtifactType {
+		return match(manifest)
+			.with({ mediaType: MEDIATYPE_MANIFEST_V2 }, () => ArtifactType.image)
+			.with(
+				{
+					mediaType: MEDIATYPE_OCI_MANIFEST_V1,
+					config: { mediaType: MEDIATYPE_OCI_CONFIG_FILE },
+				},
+				() => ArtifactType.filesystem,
+			)
+			.with(
+				{
+					mediaType: MEDIATYPE_OCI_MANIFEST_V1,
+					config: { mediaType: MEDIATYPE_OCI_CONFIG_DIRECTORY },
+				},
+				() => ArtifactType.filesystem,
+			)
+			.with(
+				{
+					mediaType: MEDIATYPE_OCI_MANIFEST_V1,
+					config: { mediaType: MEDIATYPE_OCI_CONFIG_OBJECT },
+				},
+				() => ArtifactType.object,
+			)
+			.otherwise(() => ArtifactType.unsupported);
+	}
+
+	private async pullArtifact(
+		repo: string,
+		tag: string,
+		manifest: ManifestOCI,
+		type: ArtifactType,
+	): Promise<ObjectReference | FilesystemReference> {
+		const client = this.getRegistryClient(repo);
+		if (manifest.layers.length === 0) {
+			throw new NoLayersError(
+				`No layers found for ${client.repo.canonicalName}:${tag}`,
+			);
+		}
+		const { mediaType, digest, annotations } = manifest.layers[0];
+		const { stream } = await client.createBlobReadStream({ digest });
+		if (type === ArtifactType.object) {
+			return {
+				type: ArtifactType.object,
+				value: JSON.parse(await streamToString(stream)),
+			};
+		} else if (mediaType === 'application/tar+gzip') {
+			const extractPath = await fs.promises.mkdtemp(
+				path.join(os.tmpdir(), path.sep),
+			);
+			await pipeline(stream, tar.extract({ cwd: extractPath }));
+			// if file then return path to file using title
+			const title =
+				annotations?.['org.opencontainers.image.title'] || 'undefined';
+			if (manifest.config.mediaType === MEDIATYPE_OCI_CONFIG_FILE) {
+				return {
+					type: ArtifactType.filesystem,
+					path: path.join(extractPath, title),
+				};
+			} else {
+				return { type: ArtifactType.filesystem, path: extractPath };
+			}
+		} else {
+			throw new ArtifactTypeUnsupportedError(type);
+		}
+	}
+
+	private async pullImage(canonicalRef: string): Promise<ImageReference> {
+		this.logger.info({ canonicalRef }, 'pulling image');
+		const authconfig = this.getDockerAuthConfig();
+		const progressStream = await this.docker.pull(canonicalRef, { authconfig });
+		await this.followDockerProgress(progressStream);
+		return { type: ArtifactType.image, name: canonicalRef };
+	}
+
+	private async pushImage(repo: string, tag: string, source: ImageReference) {
+		const { index, canonicalName, canonicalRef } = parseRepoAndTag(
+			`${repo}:${tag}`,
+			this.index,
+		);
+		let image = await this.docker.getImage(source.name);
+		if (source.name !== `${canonicalName}:${tag}`) {
+			await image.tag({ repo: canonicalName, tag, force: true });
+			image = await this.docker.getImage(canonicalRef);
+		}
+		const authconfig = this.getDockerAuthConfig();
+		const pushOpts = { registry: index.name, authconfig };
+		const progressStream = await image.push(pushOpts);
+		this.logger.info({ image: image.id }, 'pushed image');
 		await this.followDockerProgress(progressStream);
 	}
 
-	private getDockerAuthConfig(authOpts: RegistryAuthOptions) {
+	private async pushArtifact(
+		repo: string,
+		tag: string,
+		reference: ArtifactReference,
+	) {
+		// const emptyConfigDigest = createHash('sha256').setEncoding('hex').read();
+		const { title, stream, artifactMediaType, blobMediaType } =
+			await this.readArtifact(reference);
+		// push artifact blob
+		const { digest, size } = await this.pushBlob(repo, stream, blobMediaType);
+		// build manifest and push
+		const manifest: ManifestOCI = {
+			schemaVersion: 2,
+			mediaType: 'application/vnd.oci.image.manifest.v1+json',
+			config: {
+				mediaType: artifactMediaType,
+				digest,
+				size,
+			},
+			layers: [
+				{
+					mediaType: blobMediaType,
+					digest,
+					size,
+					...(title
+						? { annotations: { 'org.opencontainers.image.title': title } }
+						: undefined),
+				},
+			],
+		};
+		const client = this.getRegistryClient(repo);
+		return await client.putManifest({
+			manifestData: Buffer.from(JSON.stringify(manifest)),
+			ref: tag,
+			mediaType: manifest.mediaType,
+		});
+	}
+
+	private async readArtifact(reference: ArtifactReference) {
+		if (reference.type === ArtifactType.filesystem) {
+			if (!(await pathExists(reference.path))) {
+				throw Error(`Artifact path does not exist: ${reference.path}`);
+			}
+			if (await isDir(reference.path)) {
+				return {
+					title: path.basename(reference.path),
+					stream: tar.create({ cwd: reference.path, gzip: true }, ['.']),
+					artifactMediaType: MEDIATYPE_OCI_CONFIG_DIRECTORY,
+					blobMediaType: 'application/tar+gzip',
+				};
+			} else {
+				// await tar.create({ cwd: path.dirname(reference.path), gzip: true, file: '/tmp/something.tar.gzip'}, [path.basename(reference.path)])
+				return {
+					title: path.basename(reference.path),
+					stream: tar.create(
+						{ cwd: path.dirname(reference.path), gzip: true },
+						[path.basename(reference.path)],
+					),
+					artifactMediaType: MEDIATYPE_OCI_CONFIG_FILE,
+					blobMediaType: 'application/tar+gzip',
+				};
+			}
+		} else if (reference.type === ArtifactType.object) {
+			const stream = new Readable();
+			stream.push(JSON.stringify(reference.value));
+			stream.push(null);
+			return {
+				title: undefined,
+				stream,
+				artifactMediaType: MEDIATYPE_OCI_CONFIG_OBJECT,
+				blobMediaType: 'application/json',
+			};
+		} else {
+			throw new ArtifactTypeUnsupportedError(reference.type);
+		}
+	}
+
+	private async pushBlob(
+		repo: string,
+		stream: NodeJS.ReadableStream,
+		contentType?: string,
+	) {
+		const hash = createHash('sha256');
+		hash.setEncoding('hex');
+		const cachePath = path.join(os.tmpdir(), path.sep, randomUUID());
+		const hashPipe = new PassThrough();
+		const writePipe = new PassThrough();
+		stream.pipe(hashPipe);
+		stream.pipe(writePipe);
+		await pipeline(hashPipe, hash);
+		await pipeline(writePipe, fs.createWriteStream(cachePath));
+		const digest = 'sha256:' + hash.read();
+		const size = (await fs.promises.stat(cachePath)).size;
+		const client = this.getRegistryClient(repo);
+		await client.blobUpload({
+			digest,
+			stream: fs.createReadStream(cachePath),
+			contentLength: size,
+			contentType,
+		});
 		return {
-			username: authOpts.username,
-			password: authOpts.password,
-			serveraddress: this.registryUri,
+			digest,
+			size,
+		};
+	}
+
+	private getRegistryClient(repo: string) {
+		// new repo if not initialized
+		if (!this.client) {
+			this.client = new RegistryClientV2({
+				repo: parseRepo(repo, this.index),
+			});
+		}
+		// update repo if changed
+		if (this.client.repo.remoteName !== repo) {
+			this.client.repo = parseRepo(repo, this.index);
+		}
+		return this.client;
+	}
+
+	private getDockerAuthConfig() {
+		return {
+			username: this.credentials.username,
+			password: this.credentials.token,
+			serveraddress: `${this.index.scheme}://${this.index.name}`,
 		};
 	}
 
@@ -104,282 +421,5 @@ export class Registry {
 				},
 			),
 		);
-	}
-
-	public async pullArtifact(
-		artifactReference: string,
-		destDir: string,
-		authOpts: RegistryAuthOptions,
-	) {
-		this.logger.info({ artifactReference }, 'pulling artifact');
-		await fs.promises.mkdir(destDir, { recursive: true });
-		try {
-			const imageType = await this.getRefType(artifactReference, authOpts);
-			// Check if the artifact is an image or a file (oras or docker)
-			switch (imageType) {
-				case mimeType.dockerManifest:
-					// Pull image
-					await this.pullImage(artifactReference, {
-						username: authOpts.username,
-						password: authOpts.password,
-					});
-					// Save to tar
-					const destinationStream = fs.createWriteStream(
-						path.join(destDir, 'artifact.tar'),
-					);
-					const imageStream = await this.docker
-						.getImage(artifactReference)
-						.get();
-					await pump(imageStream, destinationStream);
-					this.logger.info({ destDir }, 'wrote docker image');
-					break;
-
-				case mimeType.ociManifest:
-					// Pull artifact
-					const output = await this.runOrasCommand(
-						['pull', artifactReference],
-						authOpts,
-						{ cwd: destDir },
-					);
-
-					const m = output.match(/Downloaded .* (.*)/);
-					if (m?.[1]) {
-						return m[1];
-					} else {
-						throw new Error(
-							'[ERROR] Could not determine what was pulled from the registry',
-						);
-					}
-
-				default:
-					throw new Error(
-						'unknown media type found for artifact ' +
-							artifactReference +
-							' : ' +
-							imageType,
-					);
-			}
-		} catch (e) {
-			this.logErrorAndThrow(e);
-		}
-	}
-
-	public async pushArtifact(
-		artifactReference: string,
-		artifactPath: string,
-		authOpts: RegistryAuthOptions,
-	) {
-		this.logger.info({ artifactReference }, 'pushing artifact');
-		try {
-			const artifacts = await fs.promises.readdir(artifactPath);
-			const orasCmd = ['push', artifactReference, ...artifacts];
-			await this.runOrasCommand(orasCmd, authOpts, { cwd: artifactPath });
-		} catch (e) {
-			this.logErrorAndThrow(e);
-		}
-	}
-
-	public async pushManifestList(
-		artifactReference: string,
-		manifestList: string[],
-		authOpts: RegistryAuthOptions,
-	) {
-		const cmdOpts = this.isLocal() ? ['--insecure'] : [];
-		const fqManifestList = manifestList.map(
-			(img) => `${this.registryUri}/${img}`,
-		);
-
-		let fqArtifactReference = artifactReference;
-		if (this.isLocal()) {
-			const [_, repo] = artifactReference.split('/', 2);
-			fqArtifactReference = `${this.registryUri}/${repo}`;
-		}
-
-		this.logger.info({ fqArtifactReference }, 'creating manifest list');
-		await this.runDockerCliCommand(
-			[
-				'manifest',
-				'create',
-				...cmdOpts,
-				fqArtifactReference,
-				...fqManifestList,
-			],
-			authOpts,
-		);
-
-		this.logger.info({ fqArtifactReference }, 'pushing manifest list');
-		await this.runDockerCliCommand(
-			['manifest', 'push', ...cmdOpts, fqArtifactReference],
-			authOpts,
-		);
-	}
-
-	private async runDockerCliCommand(
-		dockerArgs: string[],
-		authOpts: RegistryAuthOptions,
-		spawnOpts: any = {},
-	) {
-		this.logger.info({ dockerArgs }, 'running docker-CLI command');
-		const run = async (args: string[], opts: any = {}) => {
-			const result = await spawn('docker', args, opts);
-			if (result.ok) {
-				return {
-					stdout: result.stdout.toString(),
-					stderr: result.stderr.toString(),
-				};
-			} else {
-				throw result.err;
-			}
-		};
-		if (!this.dockerLogins.has(authOpts.username)) {
-			const loginCmd = [
-				'login',
-				'--username',
-				authOpts.username,
-				'--password',
-				authOpts.password,
-				this.registryUri,
-			];
-			this.dockerLogins.add(authOpts.username);
-			const { stdout, stderr } = await run(loginCmd, spawnOpts);
-			this.logger.info({ stdout, stderr }, 'docker login');
-		}
-		return await run(dockerArgs, spawnOpts);
-	}
-
-	private async runOrasCommand(
-		args: string[],
-		authOpts: RegistryAuthOptions,
-		spawnOptions: any = {},
-	) {
-		if (this.isLocal()) {
-			// this is a local name. therefore we allow http
-			args.push('--plain-http');
-		}
-		this.logger.info({ args: args.join(' ') }, 'running oras command');
-		if (authOpts.username) {
-			args.push(
-				'--username',
-				authOpts.username,
-				'--password',
-				authOpts.password,
-			);
-		}
-		const result = await spawn('oras', args, spawnOptions);
-		if (result.ok) {
-			const output = result.stdout.toString();
-			this.logger.info({ output }, 'oras finished');
-			return output;
-		} else {
-			throw result.err;
-		}
-	}
-
-	private logErrorAndThrow = (e: any) => {
-		if (e.spawnargs) {
-			this.logger.error(
-				{ args: e.spawnargs, stderr: e.stderr.toString('utf8') },
-				'error',
-			);
-		} else {
-			this.logger.error(e, 'error');
-		}
-		throw e;
-	};
-
-	private async loadImage(imageFilePath: string) {
-		const resultStream = await this.docker.loadImage(
-			fs.createReadStream(imageFilePath),
-		);
-		const result = await streamToString(resultStream);
-
-		// docker.load example output:
-		// Loaded image: myApp/myImage
-		// Loaded image ID: sha256:1247839245789327489102473
-		const successfulLoadRegex = /Loaded image.*?: (\S+)\\n/i;
-		const loadResultMatch = successfulLoadRegex.exec(result);
-		if (!loadResultMatch) {
-			throw new Error(`failed to load image : ${imageFilePath} .  ${result}`);
-		}
-		return this.docker.getImage(loadResultMatch[1]);
-	}
-
-	private async getRefType(
-		ref: string,
-		authOpts: RegistryAuthOptions,
-	): Promise<string | null> {
-		this.logger.info({ ref }, 'getting reference type');
-		const { host, repo, tag } = this.parseRef(ref);
-		const manifestURL = `${this.getProtocol()}://${host}/v2/${repo}/manifests/${tag}`;
-		const authHeader = await this.checkForAuth(ref);
-		const headers: { [key: string]: string } = {
-			Accept: Object.values(mimeType).join(','),
-		};
-		if (authHeader) {
-			const token = this.login(authHeader, authOpts);
-			headers.Authorization = `Bearer ${token}`;
-		}
-		const manifestResp = await fetch(manifestURL, { headers });
-		return manifestResp.headers.get('content-type');
-	}
-
-	private async checkForAuth(ref: string) {
-		const protocol = this.isLocal() ? 'http' : 'https';
-		const { host, repo, tag } = this.parseRef(ref);
-		const manifestURL = `${protocol}://${host}/v2/${repo}/manifests/${tag}`;
-		const tryResponse = await fetch(manifestURL);
-		const authHeader = tryResponse.headers.get('www-authenticate');
-		if (tryResponse.status !== 401 || !authHeader) {
-			return false;
-		} else {
-			return authHeader;
-		}
-	}
-
-	private async login(authHeader: string, authOpts: RegistryAuthOptions) {
-		const { realm, service, scope } = this.parseAuthHeader(authHeader);
-		const authUrl = new URL(realm);
-		authUrl.searchParams.set('service', service);
-		authUrl.searchParams.set('scope', scope);
-		this.logger.info('got wwwAuthenticate for getting access token');
-		// login with session user
-		const loginResp = await fetch(authUrl.href, {
-			headers: {
-				Authorization:
-					'Basic ' +
-					Buffer.from(authOpts.username + ':' + authOpts.password).toString(
-						'base64',
-					), // basic auth
-			},
-		});
-		const loginBody = await loginResp.json();
-		if (!loginBody.token) {
-			throw new Error(
-				`couldn't log in for registry (status code ${loginResp.status})`,
-			);
-		}
-		return loginBody.token;
-	}
-
-	private parseRef(ref: string) {
-		return /^(?<host>[^/]+)\/(?<repo>.*):(?<tag>[^:]+)$/.exec(ref)?.groups!;
-	}
-
-	private isLocal() {
-		return (
-			!this.registryUri.includes('.') || this.registryUri.includes('.local')
-		);
-	}
-
-	private getProtocol() {
-		return this.isLocal() ? 'http' : 'https';
-	}
-
-	private parseAuthHeader(wwwAuthenticate: string) {
-		return {
-			realm: (/realm="([^"]+)/.exec(wwwAuthenticate) || [])[1],
-			service: (/service="([^"]+)/.exec(wwwAuthenticate) || [])[1],
-			scope: (/scope="([^"]+)/.exec(wwwAuthenticate) || [])[1],
-		};
 	}
 }

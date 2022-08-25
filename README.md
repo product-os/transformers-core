@@ -25,9 +25,5 @@ Comparison with Jellyfish contracts:
 - Adds `typeVersion` field, semver range, expected to be added to Jellyfish 
 - Adds `repo` field, expected to be added to Jellyfish
 
-## TODO
-- expose task and error as type contracts, that can be loaded by transformer systems.
-- create common runtime interface for container-based and js-based transformers
-- unify/clarify artifact uri and "reference" naming
-- how to support the null loop
-  - should slugs with-out the loop be supported `repo/type:version`
+## Notes
+- `readContractSource` accepts a type parameter but performs no runtime validation of the contract read

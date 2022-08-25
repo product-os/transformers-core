@@ -1,10 +1,9 @@
-FROM docker:dind
+FROM docker:20.10-dind
 RUN apk add --no-cache \
 	bash \
-    nodejs \
-    npm \
+    nodejs=16.16.0-r0 \
+    npm=8.10.0-r0 \
     docker-cli
-RUN wget -qO- https://github.com/oras-project/oras/releases/download/v0.13.0/oras_0.13.0_linux_amd64.tar.gz | tar xvz -C /usr/local/bin
 WORKDIR /usr/src/app
 COPY package.json .npmrc ./
 RUN npm install

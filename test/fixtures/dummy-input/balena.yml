@@ -1,4 +1,3 @@
-name: hello-world
 type: text-file
-version: 5efa6399-d020-4fe0-91ca-34a976b628be
-typeVersion: ^1.0.0
+version: 1.0.0
+typeVersion: 1.0.0

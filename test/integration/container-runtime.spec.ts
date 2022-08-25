@@ -1,17 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import {
 	logger,
 	ContainerRuntime,
 	prepareWorkspace,
-	createTask,
+	createTaskContract,
 	Registry,
 	ActorCredentials,
+	readContractSource,
+	TransformerType,
+	createContract,
 } from '../../lib/';
-import type { Contract, TransformerContract } from '../../lib/';
 import { spawn } from '../../lib/util';
-import { createInputManifest } from '../../lib/manifest';
+import { createInputManifestFromTask } from '../../lib';
 
 describe('ContainerRuntime', function () {
 	jest.setTimeout(5 * 60 * 1000);
@@ -31,16 +32,24 @@ describe('ContainerRuntime', function () {
 		);
 
 		const fixturesPath = path.join(__dirname, '../fixtures');
-		const inputContract = yaml.load(
-			fs
-				.readFileSync(path.join(fixturesPath, './dummy-input/balena.yml'))
-				.toString(),
-		) as Contract;
+		const inputContractSource = await readContractSource(
+			path.join(fixturesPath, './dummy-input/balena.yml'),
+		);
+		const inputContract = createContract({
+			...inputContractSource,
+			name: 'dummy-input',
+			loop: 'test',
+		});
 
 		const transformerPath = path.join(fixturesPath, './dummy-transformer/');
-		const transformerContract = yaml.load(
-			fs.readFileSync(path.join(transformerPath, './balena.yml')).toString(),
-		) as TransformerContract;
+		const transformerContractSource = await readContractSource<TransformerType>(
+			path.join(transformerPath, './balena.yml'),
+		);
+		const transformerContract = createContract({
+			...transformerContractSource,
+			name: 'dummy-transformer',
+			loop: 'test',
+		});
 		const transformerImageRef = `dummy-transformer:latest`;
 		const buildResult = await spawn('docker', [
 			'build',
@@ -52,19 +61,18 @@ describe('ContainerRuntime', function () {
 			throw buildResult.err;
 		}
 
-		const task = createTask('test', inputContract, transformerContract);
+		const task = createTaskContract(inputContract, transformerContract);
 
 		const credentials: ActorCredentials = {
-			slug: 'test',
-			sessionToken: 'pass',
+			username: 'test',
+			token: 'pass',
 		};
-		const registryUri = process.env.REGISTRY_URI
-			? process.env.REGISTRY_URI
-			: 'localhost:5000';
-
-		const registry = new Registry(logger, registryUri);
-		const manifest = createInputManifest(task);
-		const workspace = await prepareWorkspace(credentials, registry, manifest, {
+		const registryHost = process.env.REGISTRY_HOST
+			? process.env.REGISTRY_HOST
+			: 'localhost';
+		const registry = new Registry(logger, credentials, registryHost);
+		const manifest = createInputManifestFromTask(task);
+		const workspace = await prepareWorkspace(registry, manifest, {
 			cachedArtifactPath: path.join(fixturesPath, 'artifact/hello-world.txt'),
 		});
 

@@ -1,8 +1,8 @@
-import { Contract } from './contract';
+import { Contract, ContractType } from './contract';
 import { TransformerContract } from './transformer';
-import { OutputManifest } from './manifest';
+import { OutputManifest } from './output';
 
-export interface ErrorContract extends Contract {
+export interface ErrorType extends ContractType {
 	type: 'error';
 	typeVersion: '1.0.0';
 	data: {

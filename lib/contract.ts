@@ -1,16 +1,7 @@
-export interface ContractData {
-	[k: string]: unknown;
-}
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
 
-/**
- * ContractSource is a contract as defined in source code authored by users. Since users must define it, the
- * requirements should be as minimal as possible only `type`, `version`, and `typeVersion` are required.
- *
- * The `name` and `loop` field are not required, they are inferred from the repo origin `owner` and `name` respectively.
- *
- * Versioning tools may be used to add and maintain the version fields.
- */
-export interface ContractSource<TData = ContractData> {
+export type ContractType = {
 	/**
 	 * Optional human descriptors, not used as keys
 	 */
@@ -26,81 +17,78 @@ export interface ContractSource<TData = ContractData> {
 	 * If contract is defined in a source repo: users must define the `type`, `typeVersion` and `version`. The `version`
 	 * may be set by versioning tools on behalf of the user.
 	 */
-	version: string;
-	type: string;
-	typeVersion: string;
+	version?: string;
+	type?: string;
+	typeVersion?: string;
 	/**
 	 * The data associated with this contract.
 	 */
-	data?: TData;
-	/**
-	 * A list of requirements/dependencies for this contract.
-	 */
-	requires?: Array<{ [k: string]: unknown }> | string[];
+	// data?: Data;
 	/**
 	 * A list of providers/interfaces for this contract.
 	 */
+	// provides?: Provides;
+
+	// states?: States;
+
+	slug?: string;
+	/**
+	 * A list of requirements/dependencies for this contract.
+	 */
+	// requires?: Requires;
+	requires?: Array<{ [k: string]: unknown }> | string[];
 	provides?: Array<{ [k: string]: unknown }> | string[];
+	data?: {
+		[key: string]: any;
+	};
+};
+
+export type ContractSource<TContractType extends ContractType> = TContractType &
+	Required<Pick<ContractType, 'type' | 'version' | 'data'>>;
+
+export type Contract<TContractType extends ContractType> = TContractType &
+	Required<
+		Pick<
+			ContractType,
+			| 'type'
+			| 'version'
+			| 'requires'
+			| 'name'
+			| 'loop'
+			| 'slug'
+			| 'provides'
+			| 'data'
+		>
+	>;
+
+export function createContract<ContactType extends ContractType>(
+	from: ContractSource<ContactType> &
+		Required<Pick<ContractType, 'name' | 'loop'>>,
+): Contract<ContactType> {
+	return {
+		...from,
+		slug: createSlug(from),
+		requires: from.requires || [],
+		provides: from.provides || [],
+	};
 }
 
-/**
- * Represents a contract that has been imported from source, requires identity fields inferred from source are set.
- */
-export interface ContractImported<TData = ContractData>
-	extends ContractSource<TData> {
-	name: string;
+export function createSlug({
+	loop,
+	name,
+	type,
+}: {
 	loop: string;
-	data: TData;
+	name: string;
+	type: string;
+}) {
+	return `${loop}/${name}/${type}`;
 }
 
-/**
- * Contract must be fully qualified. All functional fields are required. Decorator fields title and description are not
- * required.
- */
-export interface Contract<TData = ContractData>
-	extends ContractImported<TData> {
-	slug: string;
-	requires: Array<{ [k: string]: unknown }> | string[];
-	provides: Array<{ [k: string]: unknown }> | string[];
-}
-
-// TODO: allow for type parameters to remove `any`
-export function createContractImported(
-	loop: string,
-	name: string,
-	source: ContractSource<any>,
-): ContractImported<any> {
-	return {
-		name,
-		loop,
-		data: source.data || {},
-		...source,
-	};
-}
-
-// TODO: allow for type parameters to remove `any`
-export function createContract(imported: ContractImported<any>): Contract<any> {
-	return {
-		slug: createSlug(imported),
-		requires: imported.requires || [],
-		provides: imported.provides || [],
-		...imported,
-	};
-}
-
-export function createSlug(
-	{
-		loop,
-		name,
-		type,
-		version,
-	}: {
-		loop: string;
-		name: string;
-		type: string;
-		version: string;
-	},
-	includeVersion = true,
+export async function readContractSource<TContractType extends ContractType>(
+	sourcePath: string,
 ) {
-	return `${loop}/${name}/${type}${includeVersion ? ':' + version : ''}`;
+	return yaml.load(
+		fs.readFileSync(sourcePath).toString(),
+	) as ContractSource<TContractType>;
 }
