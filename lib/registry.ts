@@ -63,6 +63,23 @@ export type ArtifactReference =
 	| FilesystemReference
 	| ObjectReference;
 
+// helper function to load an image tar from path to local docker before push
+export async function loadImage(imagePath: string) {
+	if (!(await pathExists(imagePath))) {
+		throw Error(`Image path does not exist: ${imagePath}`);
+	}
+	const stdout = await new Docker().loadImage(fs.createReadStream(imagePath));
+	const result = await streamToString(stdout);
+	// docker.load example output:
+	// Loaded image: myApp/myImage
+	// Loaded image ID: sha256:1247839245789327489102473
+	const images = result.match(/Loaded image.*?: (\S+)\\n/i);
+	if (!images) {
+		throw new ImageLoadError(`failed to load image ${imagePath}: ${result}`);
+	}
+	return images[1];
+}
+
 /**
  * Registry implements public push, pull methods for handling image, filesystem and json objects.
  *
@@ -161,22 +178,6 @@ export class Registry {
 				(reference as any).type || 'undefined',
 			);
 		}
-	}
-
-	async loadImage(imagePath: string) {
-		if (!(await pathExists(imagePath))) {
-			throw Error(`Image path does not exist: ${imagePath}`);
-		}
-		const stdout = await this.docker.loadImage(fs.createReadStream(imagePath));
-		const result = await streamToString(stdout);
-		// docker.load example output:
-		// Loaded image: myApp/myImage
-		// Loaded image ID: sha256:1247839245789327489102473
-		const images = result.match(/Loaded image.*?: (\S+)\\n/i);
-		if (!images) {
-			throw new ImageLoadError(`failed to load image ${imagePath}: ${result}`);
-		}
-		return images[1];
 	}
 
 	/**

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { ArtifactType, logger, Registry } from '../../lib';
+import {ArtifactType, loadImage, logger, Registry} from '../../lib';
 
 jest.setTimeout(60 * 60 * 1000);
 
@@ -18,7 +18,7 @@ describe('Registry', function () {
 
 	it('should push image', async function () {
 		const registry = new Registry(logger, credentials, host, port, scheme);
-		const name = await registry.loadImage(imagePath);
+		const name = await loadImage(imagePath);
 		await registry.push('test-image', 'latest', {
 			type: ArtifactType.image,
 			name,
