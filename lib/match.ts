@@ -1,24 +1,16 @@
-import * as skhema from 'skhema';
 import { Contract } from './contract';
 import { TransformerSet } from './transformer';
+import { matchesSchema } from 'spartan-schema';
 
 export function matchTransformers(
 	transformers: TransformerSet,
-	previousContract: Contract<any> | null,
-	currentContract: Contract<any>,
+	contract: Contract<any>,
 ) {
 	return transformers.filter((transformer) => {
-		if (!transformer.data.filter) {
+		if (!transformer?.data?.transforms) {
 			return false;
 		}
-		const matchesCurrent = skhema.isValid(
-			transformer.data.filter,
-			currentContract,
-		);
-		const matchesPrevious = skhema.isValid(
-			transformer.data.filter,
-			previousContract || {},
-		);
-		return matchesCurrent && !matchesPrevious;
+		const isMatch = matchesSchema({ schema: transformer.data.transforms });
+		return isMatch(contract);
 	});
 }

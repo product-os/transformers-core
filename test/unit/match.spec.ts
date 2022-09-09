@@ -1,24 +1,8 @@
 import { randomUUID } from 'crypto';
 import { createContract, matchTransformers, TransformerType } from '../../lib';
-import { JSONSchema6 } from 'json-schema';
 
 describe('Transformers', function () {
 	describe('matchTransformers()', function () {
-		// TODO: semver match version
-		const filterEqualsInput: JSONSchema6 = {
-			type: 'object',
-			required: ['type'],
-			properties: {
-				type: { const: 'source' },
-			},
-		};
-		const filterNotEqualsInput: JSONSchema6 = {
-			type: 'object',
-			required: ['type'],
-			properties: {
-				type: { const: 'else' },
-			},
-		};
 		const matchTransformer = createContract<TransformerType>({
 			type: 'transformer',
 			name: 'match-me',
@@ -26,8 +10,26 @@ describe('Transformers', function () {
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: {
-				autoFinalize: false,
-				filter: filterEqualsInput,
+				finalize: false,
+				transforms: {
+					type: ['enum', 'source'],
+				},
+			},
+		});
+		const matchValueTransformer = createContract<TransformerType>({
+			type: 'transformer',
+			name: 'match-me',
+			loop: 'test',
+			version: randomUUID(),
+			typeVersion: '1.0.0',
+			data: {
+				finalize: false,
+				transforms: {
+					type: ['enum', 'source'],
+					data: {
+						value: ['enum', 'test'],
+					},
+				},
 			},
 		});
 		const notMatchTransformer = createContract<TransformerType>({
@@ -37,8 +39,10 @@ describe('Transformers', function () {
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: {
-				autoFinalize: false,
-				filter: filterNotEqualsInput,
+				finalize: false,
+				transforms: {
+					type: ['enum', 'else'],
+				},
 			},
 		});
 		const input = createContract({
@@ -47,13 +51,21 @@ describe('Transformers', function () {
 			loop: 'test',
 			version: randomUUID(),
 			typeVersion: '1.0.0',
-			data: {},
+			data: {
+				value: 'test',
+			},
 		});
 
 		it('should match only one transformer', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
-			expect(matchTransformers(transformers, null, input)).toEqual(matched);
+			expect(matchTransformers(transformers, input)).toEqual(matched);
+		});
+
+		it('should match data value', function () {
+			const transformers = [notMatchTransformer, matchValueTransformer];
+			const matched = [matchValueTransformer];
+			expect(matchTransformers(transformers, input)).toEqual(matched);
 		});
 	});
 });
