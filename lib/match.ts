@@ -1,4 +1,3 @@
-import * as skhema from 'skhema';
 import { Contract } from './contract';
 import { TransformerSet } from './transformer';
 
@@ -8,17 +7,15 @@ export function matchTransformers(
 	currentContract: Contract<any>,
 ) {
 	return transformers.filter((transformer) => {
-		if (!transformer.data.filter) {
+		if (!transformer.data.transforms) {
 			return false;
 		}
-		const matchesCurrent = skhema.isValid(
-			transformer.data.filter,
-			currentContract,
+		const matchesCurrent = transformer.data.transforms.includes(
+			currentContract.type,
 		);
-		const matchesPrevious = skhema.isValid(
-			transformer.data.filter,
-			previousContract || {},
-		);
+		const matchesPrevious = previousContract
+			? transformer.data.transforms.includes(previousContract.type)
+			: false;
 		return matchesCurrent && !matchesPrevious;
 	});
 }

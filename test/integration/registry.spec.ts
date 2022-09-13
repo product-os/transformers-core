@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {ArtifactType, loadImage, logger, Registry} from '../../lib';
+import { ArtifactType, loadImage, logger, Registry } from '../../lib';
 
 jest.setTimeout(60 * 60 * 1000);
 
