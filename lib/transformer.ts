@@ -7,7 +7,7 @@ export interface TransformerType extends ContractType {
 	typeVersion: '1.0.0';
 	data: {
 		creates?: string[];
-		transforms: string[];
+		transforms: Array<{ [key: string]: any }>;
 	};
 }
 

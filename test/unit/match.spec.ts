@@ -12,7 +12,13 @@ describe('Transformers', function () {
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: {
-				transforms: ['source'],
+				transforms: [{
+					type: 'source',
+					version: '^1.0.0',
+					data: {
+						platform: 'x86_64',
+					}
+				}],
 			},
 		});
 		const notMatchTransformer = createContract<TransformerType>({
@@ -22,7 +28,9 @@ describe('Transformers', function () {
 			version: randomUUID(),
 			typeVersion: '1.0.0',
 			data: {
-				transforms: ['else'],
+				transforms: [{
+					type: 'else'
+				}],
 			},
 		});
 
@@ -38,7 +46,7 @@ describe('Transformers', function () {
 		it('should match only one transformer', function () {
 			const transformers = [matchTransformer, notMatchTransformer];
 			const matched = [matchTransformer];
-			expect(matchTransformers(transformers, null, input)).toEqual(matched);
+			expect(matchTransformers(transformers, input)).toEqual(matched);
 		});
 	});
 });
