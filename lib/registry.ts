@@ -89,7 +89,7 @@ export async function loadImage(imagePath: string) {
  * Use RegistryClientV2 from `oci-registry-client` package for push and pull filesystem and json.
  */
 export class Registry {
-	private readonly index: RegistryIndex;
+	public readonly index: RegistryIndex;
 	private readonly logger: Logger;
 	private readonly credentials: ActorCredentials;
 	private readonly docker: Docker;
@@ -106,9 +106,6 @@ export class Registry {
 	) {
 		this.credentials = credentials;
 		this.logger = logger;
-		if (!port) {
-			port = Registry.DEFAULT_PORT;
-		}
 		if (!scheme) {
 			scheme = isLocalhost(host) ? 'http' : 'https';
 		}
@@ -230,7 +227,7 @@ export class Registry {
 				type: ArtifactType.object,
 				value: JSON.parse(await streamToString(stream)),
 			};
-		} else if (mediaType === 'application/tar+gzip') {
+		} else if (mediaType === 'application/gzip') {
 			const extractPath = await fs.promises.mkdtemp(
 				path.join(os.tmpdir(), path.sep),
 			);
@@ -282,10 +279,10 @@ export class Registry {
 		reference: ArtifactReference,
 	) {
 		// const emptyConfigDigest = createHash('sha256').setEncoding('hex').read();
-		const { title, stream, artifactMediaType, blobMediaType } =
+		const { title, stream, artifactMediaType, layerMediaType } =
 			await this.readArtifact(reference);
 		// push artifact blob
-		const { digest, size } = await this.pushBlob(repo, stream, blobMediaType);
+		const { digest, size } = await this.pushBlob(repo, stream);
 		// build manifest and push
 		const manifest: ManifestOCI = {
 			schemaVersion: 2,
@@ -297,7 +294,7 @@ export class Registry {
 			},
 			layers: [
 				{
-					mediaType: blobMediaType,
+					mediaType: layerMediaType,
 					digest,
 					size,
 					...(title
@@ -324,7 +321,7 @@ export class Registry {
 					title: path.basename(reference.path),
 					stream: tar.create({ cwd: reference.path, gzip: true }, ['.']),
 					artifactMediaType: MEDIATYPE_OCI_CONFIG_DIRECTORY,
-					blobMediaType: 'application/tar+gzip',
+					layerMediaType: 'application/gzip',
 				};
 			} else {
 				// await tar.create({ cwd: path.dirname(reference.path), gzip: true, file: '/tmp/something.tar.gzip'}, [path.basename(reference.path)])
@@ -335,7 +332,7 @@ export class Registry {
 						[path.basename(reference.path)],
 					),
 					artifactMediaType: MEDIATYPE_OCI_CONFIG_FILE,
-					blobMediaType: 'application/tar+gzip',
+					layerMediaType: 'application/gzip',
 				};
 			}
 		} else if (reference.type === ArtifactType.object) {
@@ -346,7 +343,7 @@ export class Registry {
 				title: undefined,
 				stream,
 				artifactMediaType: MEDIATYPE_OCI_CONFIG_OBJECT,
-				blobMediaType: 'application/json',
+				layerMediaType: 'application/json',
 			};
 		} else {
 			throw new ArtifactTypeUnsupportedError(reference.type);
@@ -387,6 +384,9 @@ export class Registry {
 		if (!this.client) {
 			this.client = new RegistryClientV2({
 				repo: parseRepo(repo, this.index),
+				username: this.credentials.username,
+				password: this.credentials.token,
+				scheme: this.index.scheme,
 			});
 		}
 		// update repo if changed
