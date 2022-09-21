@@ -70,7 +70,13 @@ describe('ContainerRuntime', function () {
 		const host = process.env.REGISTRY_HOST || 'localhost';
 		const port = process.env.REGISTRY_PORT || '5000';
 		const scheme = process.env.REGISTRY_SCHEME || 'http';
-		const registry = new Registry(logger, credentials, host, port, scheme as 'http' | 'https');
+		const registry = new Registry(
+			logger,
+			credentials,
+			host,
+			port,
+			scheme as 'http' | 'https',
+		);
 		const manifest = createInputManifestFromTask(task);
 		const workspace = await prepareWorkspace(registry, manifest, {
 			cachedArtifactPath: path.join(fixturesPath, 'artifact/hello-world.txt'),

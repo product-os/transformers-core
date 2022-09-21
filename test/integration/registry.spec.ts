@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {ArtifactType, loadImage, logger, Registry} from '../../lib';
+import { ArtifactType, loadImage, logger, Registry } from '../../lib';
 
 jest.setTimeout(60 * 60 * 1000);
 
@@ -14,7 +14,7 @@ const registries: Registry[] = [
 		process.env.REGISTRY_HOST || 'localhost',
 		'5000',
 		'http',
-	)
+	),
 ];
 
 if (process.env.GHCR_USER && process.env.GHCR_PASS) {
@@ -40,14 +40,21 @@ describe('Registry', function () {
 		describe(`${registry.index.name}`, function () {
 			it('should push image', async function () {
 				const name = await loadImage(imagePath);
-				await registry.push(`${registry.index.name}/product-os/transformers-core/test-image`, 'latest', {
-					type: ArtifactType.image,
-					name,
-				});
+				await registry.push(
+					`${registry.index.name}/product-os/transformers-core/test-image`,
+					'latest',
+					{
+						type: ArtifactType.image,
+						name,
+					},
+				);
 			});
 
 			it('should pull image', async function () {
-				const result = await registry.pull(`${registry.index.name}/product-os/transformers-core/test-image`, 'latest');
+				const result = await registry.pull(
+					`${registry.index.name}/product-os/transformers-core/test-image`,
+					'latest',
+				);
 				expect(result.type).toEqual('image');
 				if (result.type === 'image') {
 					expect(result.name).toEqual(
@@ -57,14 +64,21 @@ describe('Registry', function () {
 			});
 
 			it('should push directory', async function () {
-				await registry.push(`${registry.index.name}/product-os/transformers-core/test-dir`, 'latest', {
-					type: ArtifactType.filesystem,
-					path: artifactDir,
-				});
+				await registry.push(
+					`${registry.index.name}/product-os/transformers-core/test-dir`,
+					'latest',
+					{
+						type: ArtifactType.filesystem,
+						path: artifactDir,
+					},
+				);
 			});
 
 			it('should pull directory', async function () {
-				const result = await registry.pull(`${registry.index.name}/product-os/transformers-core/test-dir`, 'latest');
+				const result = await registry.pull(
+					`${registry.index.name}/product-os/transformers-core/test-dir`,
+					'latest',
+				);
 				expect(result.type).toEqual('filesystem');
 				if (result.type === 'filesystem') {
 					const pulledContents = await fs.promises.readFile(
@@ -76,14 +90,21 @@ describe('Registry', function () {
 			});
 
 			it('should push file', async function () {
-				await registry.push(`${registry.index.name}/product-os/transformers-core/test-file`, 'latest', {
-					type: ArtifactType.filesystem,
-					path: artifactFilePath,
-				});
+				await registry.push(
+					`${registry.index.name}/product-os/transformers-core/test-file`,
+					'latest',
+					{
+						type: ArtifactType.filesystem,
+						path: artifactFilePath,
+					},
+				);
 			});
 
 			it('should pull file', async function () {
-				const result = await registry.pull(`${registry.index.name}/product-os/transformers-core/test-file`, 'latest');
+				const result = await registry.pull(
+					`${registry.index.name}/product-os/transformers-core/test-file`,
+					'latest',
+				);
 				expect(result.type).toEqual('filesystem');
 				if (result.type === 'filesystem') {
 					const pulledContents = await fs.promises.readFile(result.path);
@@ -93,14 +114,21 @@ describe('Registry', function () {
 			});
 
 			it('should push object', async function () {
-				await registry.push(`${registry.index.name}/product-os/transformers-core/test-object`, 'latest', {
-					type: ArtifactType.object,
-					value: { hello: 'world', deep: { num: 1 } },
-				});
+				await registry.push(
+					`${registry.index.name}/product-os/transformers-core/test-object`,
+					'latest',
+					{
+						type: ArtifactType.object,
+						value: { hello: 'world', deep: { num: 1 } },
+					},
+				);
 			});
 
 			it('should pull object', async function () {
-				const result = await registry.pull(`${registry.index.name}/product-os/transformers-core/test-object`, 'latest');
+				const result = await registry.pull(
+					`${registry.index.name}/product-os/transformers-core/test-object`,
+					'latest',
+				);
 				expect(result.type).toEqual('object');
 				if (result.type === 'object') {
 					expect(result.value).toEqual({ hello: 'world', deep: { num: 1 } });
@@ -109,7 +137,10 @@ describe('Registry', function () {
 
 			it('should throw if pull unknown', async function () {
 				try {
-					await registry.pull(`${registry.index.name}/product-os/transformers-core/test-404`, 'latest');
+					await registry.pull(
+						`${registry.index.name}/product-os/transformers-core/test-404`,
+						'latest',
+					);
 				} catch (err: any) {
 					expect(err?.name).toEqual('NotFoundError');
 				}
