@@ -8,7 +8,9 @@ describe('Tasks', function () {
 			loop: 'test',
 			version: '1.0.0',
 			typeVersion: '1.0.0',
-			data: { filter: {}, autoFinalize: true },
+			data: {
+				transforms: [],
+			},
 		});
 		const input = createContract({
 			type: 'source',
