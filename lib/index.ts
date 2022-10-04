@@ -10,3 +10,4 @@ export * from './runtime';
 export * from './task';
 export * from './transformer';
 export * from './workspace';
+export * as yaml from 'js-yaml';
