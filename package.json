@@ -26,7 +26,7 @@
     "@balena/lint": "^5.4.2",
     "@types/bunyan": "^1.8.8",
     "@types/dockerode": "^3.3.3",
-    "@types/fs-extra": "^9.0.13",
+    "@types/fs-extra": "^11.0.0",
     "@types/inflection": "^1.13.0",
     "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.2",
