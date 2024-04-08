@@ -30,7 +30,7 @@
     "@types/inflection": "^1.13.0",
     "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.2",
-    "@types/json-schema": "^6.0.1",
+    "@types/json-schema": "^7.0.0",
     "@types/node": "^16.11.7",
     "@types/node-fetch": "^2.6.2",
     "@types/node-rsa": "^1.1.1",
