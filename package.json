@@ -23,7 +23,7 @@
     "test:compose": "docker build -t sut:latest . && docker-compose -f docker-compose.test.yml up --exit-code-from=sut"
   },
   "devDependencies": {
-    "@balena/lint": "^5.4.2",
+    "@balena/lint": "^8.0.0",
     "@types/bunyan": "^1.8.8",
     "@types/dockerode": "^3.3.3",
     "@types/fs-extra": "^9.0.13",
