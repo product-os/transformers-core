@@ -51,7 +51,7 @@
     "node-rsa": "^1.1.1",
     "oci-registry-client": "^0.2.0",
     "skhema": "^6.0.6",
-    "tar": "^6.1.11",
+    "tar": "^7.0.0",
     "ts-pattern": "^4.0.5"
   },
   "versionist": {
